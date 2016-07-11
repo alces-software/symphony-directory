@@ -67,7 +67,7 @@ if [ $IPA -gt 0 ]; then
 
   REALM=`echo $DOMAIN | sed -e 's/\(.*\)/\U\1/'`
 
-  ipa-server-install -a "${ADMINPASSWORD}" --hostname directory.$BLDDOMAIN --ip-address=10.78.254.2 -r "$REALM" -p "${ADMINPASSWORD}" -n "$DOMAIN" --no-ntp  --setup-dns --forwarder='10.78.254.1' --reverse-zone='10.in-addr.arpa.' --ssh-trust-dns --unattended 
+  ipa-server-install -a "${ADMINPASSWORD}" --hostname directory.$DOMAIN --ip-address=10.78.254.2 -r "$REALM" -p "${ADMINPASSWORD}" -n "$DOMAIN" --no-ntp  --setup-dns --forwarder='10.78.254.1' --reverse-zone='10.in-addr.arpa.' --ssh-trust-dns --unattended 
   kinit admin
   ipa dnszone-add $PRVDOMAIN --name-server directory.$BLDDOMAIN.
   ipa dnsforwardzone-add $MGTDOMAIN. --forwarder 10.78.254.1 --forward-policy=only
