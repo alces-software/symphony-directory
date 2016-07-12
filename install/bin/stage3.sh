@@ -69,11 +69,13 @@ if [ $IPA -gt 0 ]; then
 
   ipa-server-install -a "${ADMINPASSWORD}" --hostname directory.$DOMAIN --ip-address=10.78.254.2 -r "$REALM" -p "${ADMINPASSWORD}" -n "$DOMAIN" --no-ntp  --setup-dns --forwarder='10.78.254.1' --reverse-zone='10.in-addr.arpa.' --ssh-trust-dns --unattended 
   kinit admin
-  ipa dnszone-add $PRVDOMAIN --name-server directory.$BLDDOMAIN.
+  ipa dnszone-add $PRVDOMAIN --name-server directory.$DOMAIN.
+  ipa dnszone-add $BLDDOMAIN --name-server directory.$DOMAIN.
   ipa dnsforwardzone-add $MGTDOMAIN. --forwarder 10.78.254.1 --forward-policy=only
   ipa dnsforwardzone-add $EXTRADOMAIN. --forwarder 10.78.254.1 --forward-policy=only
   ipa dnsforwardzone-add $PUBDOMAIN. --forwarder 10.78.254.1 --forward-policy=only
-  ipa dnsrecord-add $DOMAIN. $PRVDOMAINHEADER --ns-rec=directory.$BLDDOMAIN.
+  ipa dnsrecord-add $DOMAIN. $PRVDOMAINHEADER --ns-rec=directory.$DOMAIN.
+  ipa dnsrecord-add $DOMAIN. $BLDDOMAINHEADER --ns-rec=directory.$DOMAIN.
   ipa dnsrecord-add $DOMAIN director --a-ip-address=10.78.254.1
   ipa dnsrecord-add $BLDDOMAIN director --a-ip-address=10.78.254.1
   ipa dnsrecord-add $BLDDOMAIN repo --a-ip-address=10.78.254.3
@@ -91,7 +93,7 @@ if [ $IPA -gt 0 ]; then
 
   ipa dnsrecord-add $DOMAIN @ --mx-preference=0 --mx-exchanger=director
   ipa dnsrecord-add $PRVDOMAINHEADER.$DOMAIN @ --mx-preference=0 --mx-exchanger=director
-  ipa dnsrecord-add $BLDDOMAIN @ --mx-preference=0 --mx-exchanger=director  
+  ipa dnsrecord-add $BLDDOMAIN @ --mx-preference=0 --mx-exchanger=director
 
   ipa config-mod --defaultshell /bin/bash
   ipa config-mod --homedirectory /users
@@ -121,6 +123,6 @@ if [ $IPA -gt 0 ]; then
   ipa sudorule-add --cmdcat=all All
   ipa sudorule-add-user --groups=adminusers All
   ipa sudorule-mod All --hostcat='all'
-  ipa sudorule-add-option All --sudooption '!authenticate'
+  ipa sudorule-add-option All --sudooption '!authenticate' 
 fi
 ############# END PUPPET ###################
