@@ -69,6 +69,6 @@ if [ $IPA -gt 0 ]; then
 
   ipa-server-install -a "${ADMINPASSWORD}" --hostname directory.$DOMAIN --ip-address=10.78.254.2 -r "$REALM" -p "${ADMINPASSWORD}" -n "$DOMAIN" --no-ntp  --setup-dns --forwarder='10.78.254.1' --reverse-zone='10.in-addr.arpa.' --ssh-trust-dns --unattended 
 
-  /opt/symphony/directory/bin/setup_domain.sh
+  bash -x /opt/symphony/directory/bin/setup_domain.sh
 fi
 ############# END PUPPET ###################
