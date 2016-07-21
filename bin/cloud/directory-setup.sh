@@ -13,7 +13,8 @@ sed -i '/::1 directory/d' /etc/hosts
 sed -i -e "s/^PEERDNS.*$/PEERDNS=\"no\"/g" /etc/sysconfig/network-scripts/ifcfg-eth0
 
 #This should work now we've sorted the host file
-REVERSEZONE=`eval "dig +noall +answer -x \`hostname -i\` | cut -d ' ' -f 1 | cut -d. -f 2-"`
+REVERSEIP=$(echo `hostname -i` | cut -d . -f 1)
+REVERSEZONE="${REVERSEIP}.in-addr.arpa."
 
 #INSTALL IPA
 yum -y install ipa-server bind bind-dyndb-ldap ipa-server-dns
