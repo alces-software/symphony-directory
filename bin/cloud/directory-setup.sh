@@ -31,8 +31,8 @@ yum -y install ipa-server bind bind-dyndb-ldap ipa-server-dns
 ipa-server-install -a "$PASSWORD" --hostname `hostname -f`  -r "$REALM" -p "$PASSWORD" -n "$DOMAIN" --no-ntp  --setup-dns --forwarder="$FORWARDER" --reverse-zone="$REVERSEZONE" --ssh-trust-dns --unattended
 
 #Firewall Rules
-sed -i '/#APPLIANCERULES#/a -A INPUT -i eth0 -p tcp -m multiport --dports 80,443,389,636,88,464,53 -j ACCEPT' /etc/sysconfig/iptables
-sed -i '/#APPLIANCERULES#/a -A INPUT -i eth0 -p udp -m multiport --dports 88,464,53 -j ACCEPT' /etc/sysconfig/iptables
+sed -i '/#APPLIANCERULES#/a -A INPUT -i eth1 -p tcp -m multiport --dports 80,443,389,636,88,464,53 -j ACCEPT' /etc/sysconfig/iptables
+sed -i '/#APPLIANCERULES#/a -A INPUT -i eth1 -p udp -m multiport --dports 88,464,53 -j ACCEPT' /etc/sysconfig/iptables
 
 echo $PASSWORD | kinit admin
 ipa config-mod --defaultshell /bin/bash
