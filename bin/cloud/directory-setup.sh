@@ -1,10 +1,9 @@
 #!/bin/bash
 
-NETWORKTYPE='FLAT'
 CLUSTER=`hostname -d | cut -d '.' -f 1`
 DOMAIN=`hostname -d`
 REALM=`echo $DOMAIN | sed -e 's/\(.*\)/\U\1/'`
-FORWARDER=`grep nameserver /etc/resolv.conf | awk '{print $2}'`
+FORWARDER=`grep nameserver /etc/resolv.conf | awk 'NR==1{print $2}'`
 PASSWORD=Pa55W0rd
 
 #PREP HOSTFILE
