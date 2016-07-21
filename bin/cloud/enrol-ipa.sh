@@ -1,12 +1,13 @@
 #!/bin/bash
-CLIENTNAME=login1
-CLUSTER=cluster2
-CLIENTIP=10.75.0.51
+
+CLIENTNAME=`hostname -s`
+CLUSTER=`hostname -d | cut -d . -f 1`
+CLIENTIP=`hostname -i`
 ONETIMEPASS=moose
 
-DOMAIN=flighty.alces.network
-REALM=`echo $DOMAIN | sed -e 's/\(.*\)/\U\1/'`
-DIRECTORY_IP=10.75.0.161
+DOMAIN=`hostname -d | cut -d . -f 2-3`
+REALM=$(echo `hostname -d` | sed -e 's/\(.*\)/\U\1/')
+DIRECTORY="directory.$CLUSTER.$DOMAIN"
 
 #STOP DHCP CHANGING RESOLV.CONF ON REBOOTS
 sed -i -e "s/^PEERDNS.*$/PEERDNS=\"no\"/g" /etc/sysconfig/network-scripts/ifcfg-eth0
@@ -14,4 +15,4 @@ sed -i -e "s/^PEERDNS.*$/PEERDNS=\"no\"/g" /etc/sysconfig/network-scripts/ifcfg-
 echo -e "search $CLUSTER.$DOMAIN $DOMAIN\nnameserver $DIRECTORY_IP" > /etc/resolv.conf
 
 yum -y install ipa-client ipa-admintools
-echo ipa-client-install --no-ntp --mkhomedir --force-join --realm="$REALM" --server="${DIRECTORY_IP}" -w "$ONETIMEPASS" --domain="${CLUSTER}.${DOMAIN}" --unattended
+ipa-client-install --no-ntp --mkhomedir --force-join --realm="$REALM" --server="${DIRECTORY}" -w "$ONETIMEPASS" --domain="${CLUSTER}.${DOMAIN}" --unattended
