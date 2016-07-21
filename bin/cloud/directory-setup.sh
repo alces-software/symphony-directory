@@ -16,6 +16,14 @@ sed -i -e "s/^PEERDNS.*$/PEERDNS=\"no\"/g" /etc/sysconfig/network-scripts/ifcfg-
 REVERSEIP=$(echo `hostname -i` | cut -d . -f 1)
 REVERSEZONE="${REVERSEIP}.in-addr.arpa."
 
+#Install Haveged to help with entropy during IPA installation
+wget ftp://195.220.108.108/linux/epel/7/x86_64/h/haveged-1.9.1-1.el7.x86_64.rpm \
+        -O /tmp/haveged.rpm
+rpm -Uvh /tmp/haveged.rpm
+rm -f /tmp/haveged.rpm
+systemctl start haveged
+systemctl enable haveged
+
 #INSTALL IPA
 yum -y install ipa-server bind bind-dyndb-ldap ipa-server-dns
 ipa-server-install -a "$PASSWORD" --hostname `hostname -f`  -r "$REALM" -p "$PASSWORD" -n "$DOMAIN" --no-ntp  --setup-dns --forwarder="$FORWARDER" --reverse-zone="$REVERSEZONE" --ssh-trust-dns --unattended
