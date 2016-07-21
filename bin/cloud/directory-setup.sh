@@ -7,7 +7,6 @@ FORWARDER=`grep nameserver /etc/resolv.conf | awk 'NR==1{print $2}'`
 PASSWORD=Pa55W0rd
 
 #PREP HOSTFILE
-echo -ne "\n#localip entry\n`hostname -I`     `hostname -f` `hostname -s`"  >> /etc/hosts
 sed -i '/127.0.0.1 directory/d' /etc/hosts
 sed -i '/::1 directory/d' /etc/hosts
 #STOP DHCP CHANGING RESOLV.CONF ON REBOOTS
