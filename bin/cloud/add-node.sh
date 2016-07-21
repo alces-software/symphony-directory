@@ -1,14 +1,22 @@
 #!/bin/bash
 
-CLIENTNAME=login1
-CLUSTER=cluster1
-CLIENTIP=10.75.0.110
-ONETIMEPASS=moose
+CLIENTNAME=$1
+CLIENTIP=$2
+CLUSTER=$3
+ONETIMEPASS=$4
+
+if [[ -z $CLIENTNAME || -z $CLIENTIP || -z $CLUSTER || -z $ONETIMEPASS ]];
+then
+    echo "One or more variables not set"
+    echo "Usage: $0 <client name> <client ip> <cluster> <one time password>"
+    exit 1
+fi
+
 KEYTAB=/root/hadder.keytab
 KEYUSER=hadder
 
-DOMAIN=`hostname -d`
-REALM=`echo $DOMAIN | sed -e 's/\(.*\)/\U\1/'`
+DOMAIN=$(hostname -d | cut -d '.' -f 2-3)
+REALM=$(echo `hostname -d` | sed -e 's/\(.*\)/\U\1/')
 
 kinit -kt $KEYTAB $KEYUSER@$REALM
 
