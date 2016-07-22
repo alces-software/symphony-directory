@@ -3,15 +3,22 @@
 KEYTAB=/root/admin.keytab
 KEYUSER=admin
 
-DIRECTORYAPPLIANCE=`hostname -f`
+CLUSTER=$1
 
-CLUSTER=`hostname -d | cut -d . -f 1`
-DOMAIN=`hostname -d | cut -d . -f 2-3`
-REALM=$(echo `hostname -d` | sed -e 's/\(.*\)/\U\1/')
+if [ -z $CLUSTER ];
+then
+  echo "No cluster specified"
+  echo "Usage: $0 <cluster name>"
+  exit 1
+fi
+
+DIRECTORYAPPLIANCE=`hostname -f`
+DOMAIN=`hostname -d`
+REALM=$(echo $DOMAIN | sed -e 's/\(.*\)/\U\1/')
 
 kinit -kt $KEYTAB $KEYUSER@$REALM
 
-ipa dnszone-add $DOMAIN --name-server $DIRECTORYAPPLIANCE.
+ipa dnszone-add $CLUSTER.$DOMAIN --name-server $DIRECTORYAPPLIANCE.
 ipa dnsrecord-add $DOMAIN $CLUSTER --ns-rec=$DIRECTORYAPPLIANCE.
 
 kdestroy
