@@ -52,6 +52,7 @@ if [ $IPA -gt 0 ]; then
   ipa dnsrecord-add $DOMAIN. $PUBDOMAINHEADER --ns-rec=director
   ipa dnsrecord-add $DOMAIN. openstack --ns-rec=director
   ipa dnsrecord-add $PRVDOMAIN directory --a-ip-address=10.110.254.2
+  ipa dnsrecord-add $BLDDOMAIN directory --a-ip-address=10.78.254.2
 
   ipa dnsrecord-add $DOMAIN @ --mx-preference=0 --mx-exchanger=director
   ipa dnsrecord-add $PRVDOMAINHEADER.$DOMAIN @ --mx-preference=0 --mx-exchanger=director
