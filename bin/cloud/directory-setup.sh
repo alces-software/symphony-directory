@@ -1,6 +1,5 @@
 #!/bin/bash
 
-CLUSTER=`hostname -d | cut -d '.' -f 1`
 DOMAIN=`hostname -d`
 REALM=`echo $DOMAIN | sed -e 's/\(.*\)/\U\1/'`
 FORWARDER=`grep nameserver /etc/resolv.conf | awk 'NR==1{print $2}'`
@@ -13,8 +12,7 @@ sed -i '/::1 directory/d' /etc/hosts
 sed -i -e "s/^PEERDNS.*$/PEERDNS=\"no\"/g" /etc/sysconfig/network-scripts/ifcfg-eth0
 
 #This should work now we've sorted the host file
-REVERSEIP=$(echo `hostname -i` | cut -d . -f 1)
-REVERSEZONE="${REVERSEIP}.in-addr.arpa."
+REVERSEZONE="`hostname -i | cut -d . -f 3`.`hostname -i | cut -d . -f 2`.`hostname -i | cut -d . -f 1`.in-addr.arpa."
 
 #Install Haveged to help with entropy during IPA installation
 wget ftp://195.220.108.108/linux/epel/7/x86_64/h/haveged-1.9.1-1.el7.x86_64.rpm \
