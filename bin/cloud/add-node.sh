@@ -15,8 +15,8 @@ fi
 KEYTAB=/root/hadder.keytab
 KEYUSER=hadder
 
-DOMAIN=$(hostname -d | cut -d '.' -f 2-3)
-REALM=$(echo `hostname -d` | sed -e 's/\(.*\)/\U\1/')
+DOMAIN=$(hostname -d)
+REALM=$(echo $DOMAIN | sed -e 's/\(.*\)/\U\1/')
 
 kinit -kt $KEYTAB $KEYUSER@$REALM
 
