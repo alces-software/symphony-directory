@@ -5,13 +5,9 @@ KEYUSER=admin
 
 DIRECTORYAPPLIANCE=`hostname -f`
 
+CLUSTER=`hostname -d | cut -d . f 1`
 DOMAIN=`hostname -d | cut -d . -f 2-3`
-REALM=`echo $DOMAIN | sed -e 's/\(.*\)/\U\1/'`
-
-if [ ! -z $CLUSTER ];
-then
-    CLUSTER=$1
-fi
+REALM=$(echo `hostname -d` | sed -e 's/\(.*\)/\U\1/')
 
 kinit -kt $KEYTAB $KEYUSER@$REALM
 
