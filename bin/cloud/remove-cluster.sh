@@ -19,5 +19,6 @@ REALM=$(echo $DOMAIN | sed -e 's/\(.*\)/\U\1/')
 kinit -kt $KEYTAB $KEYUSER@$REALM
 
 ipa dnsrecord-del $REALM $CLUSTER --del-all
+ipa dnszone-del $CLUSTER.$REALM
 
 kdestroy
