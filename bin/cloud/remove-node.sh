@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -ex
 CLIENTNAME=$1
 CLUSTER=$2
 
@@ -17,6 +17,7 @@ REALM=$(echo `hostname -d` | sed -e 's/\(.*\)/\U\1/')
 
 kinit -kt $KEYTAB $KEYUSER@$REALM
 
-ipa host-del $CLIENTNAME.$CLUSTER.$DOMAIN --updatedns --continue
+ipa host-del $CLIENTNAME.$CLUSTER.$REALM --updatedns --continue
+ipa dnsrecord-del $CLUSTER.$REALM $CLIENTNAME --del-all
 
 kdestroy
