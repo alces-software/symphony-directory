@@ -31,6 +31,7 @@ ipa-server-install -a "$PASSWORD" --hostname `hostname -f`  -r "$REALM" -p "$PAS
 #Firewall Rules
 sed -i '/#APPLIANCERULES#/a -A INPUT -i eth0 -p tcp -m multiport --dports 80,81,25278,443,389,636,88,464,53 -j ACCEPT' /etc/sysconfig/iptables
 sed -i '/#APPLIANCERULES#/a -A INPUT -i eth0 -p udp -m multiport --dports 88,464,53 -j ACCEPT' /etc/sysconfig/iptables
+systemctl restart iptables
 
 echo $PASSWORD | kinit admin
 ipa config-mod --defaultshell /bin/bash
