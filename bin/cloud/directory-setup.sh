@@ -29,7 +29,7 @@ yum -y install ipa-server bind bind-dyndb-ldap ipa-server-dns
 ipa-server-install -a "$PASSWORD" --hostname `hostname -f`  -r "$REALM" -p "$PASSWORD" -n "$DOMAIN" --no-ntp  --setup-dns --forwarder="$FORWARDER" --reverse-zone="$REVERSEZONE" --ssh-trust-dns --unattended
 
 #Firewall Rules
-sed -i '/#APPLIANCERULES#/a -A INPUT -i eth0 -p tcp -m multiport --dports 80,443,389,636,88,464,53 -j ACCEPT' /etc/sysconfig/iptables
+sed -i '/#APPLIANCERULES#/a -A INPUT -i eth0 -p tcp -m multiport --dports 80,81,25278,443,389,636,88,464,53 -j ACCEPT' /etc/sysconfig/iptables
 sed -i '/#APPLIANCERULES#/a -A INPUT -i eth0 -p udp -m multiport --dports 88,464,53 -j ACCEPT' /etc/sysconfig/iptables
 
 echo $PASSWORD | kinit admin
@@ -76,3 +76,23 @@ ipa role-add-member "Host Adder" --user=hadder
 
 ipa-getkeytab -s `hostname` -p hadder@$REALM -k /root/hadder.keytab
 ipa-getkeytab -s `hostname` -p admin@$REALM -k /root/admin.keytab
+
+# Set up Alces Flight Trigger service
+alces service install alces-flight-www
+alces service install alces-flight-trigger
+# Don't conflict with existing IPA http setup
+sed -i -e '/.*http_enabled.*/c cw_ALCES_FLIGHT_WWW_http_enabled=true' \
+    -e '/.*http_port.*/c cw_ALCES_FLIGHT_WWW_http_port=81' \
+    -e '/.*https_port.*/c cw_ALCES_FLIGHT_WWW_https_port=8444' \
+    /opt/clusterware/etc/alces-flight-www.rc
+alces service enable alces-flight-www
+alces service enable alces-flight-trigger
+systemctl start clusterware-alces-flight-www
+systemctl start clusterware-alces-flight-trigger
+# Populate Flight Trigger scripts
+TRIGGERDIR="/opt/clusterware/var/lib/triggers/directory/triggers"
+mkdir $TRIGGERDIR
+for task in add-cluster add-node remove-cluster remove-node; do
+    curl https://raw.githubusercontent.com/alces-software/symphony-directory/master/bin/cloud/${task}.sh > $TRIGGERDIR/$task
+    chmod 750 $TRIGGERDIR/$task
+done
