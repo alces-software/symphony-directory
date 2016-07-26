@@ -12,7 +12,7 @@ REALM=$(echo $DOMAIN | sed -e 's/\(.*\)/\U\1/')
 
 function check_node {
 
-    $DOMAINRECORDS=$(ipa dnsrecord-find $CLUSTERNAME.$DOMAIN $CLIENTNAME |
+    $DOMAINRECORDS=$(ipa dnsrecord-find $CLUSTER.$DOMAIN $CLIENTNAME |
                      grep "${CLIENTNAME}" |
                      awk '{print $3}')
     if [[ $DOMAINRECORDS == $CLIENTNAME || $REALMRECORDS == $CLIENTNAME ]];
