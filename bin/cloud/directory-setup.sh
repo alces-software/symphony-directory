@@ -87,8 +87,8 @@ sed -i -e '/.*http_enabled.*/c cw_ALCES_FLIGHT_WWW_http_enabled=true' \
     -e '/.*http_port.*/c cw_ALCES_FLIGHT_WWW_http_port=81' \
     -e '/.*https_port.*/c cw_ALCES_FLIGHT_WWW_https_port=8444' \
     /opt/clusterware/etc/alces-flight-www.rc
-alces service enable alces-flight-www
-alces service enable alces-flight-trigger
+$alcesbin service enable alces-flight-www
+$alcesbin service enable alces-flight-trigger
 systemctl start clusterware-alces-flight-www
 systemctl start clusterware-alces-flight-trigger
 # Populate Flight Trigger scripts
