@@ -1,6 +1,12 @@
 #!/bin/bash
 set -ex
+
+#Prepare /etc/hosts
 CLIENTNAME=`hostname -s`
+sed -i -e "/.*127.0.0.1 $CLIENTNAME.*/d" \
+       -e "/.*::1 $CLIENTNAME.*/d" \
+       /etc/hosts
+
 CLUSTER=`hostname -d | cut -d . -f 1`
 CLIENTIP=`hostname -i`
 ONETIMEPASS=moose
