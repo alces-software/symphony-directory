@@ -79,8 +79,9 @@ ipa-getkeytab -s `hostname` -p hadder@$REALM -k /root/hadder.keytab
 ipa-getkeytab -s `hostname` -p admin@$REALM -k /root/admin.keytab
 
 # Set up Alces Flight Trigger service
-alces service install alces-flight-www
-alces service install alces-flight-trigger
+alcesbin=/opt/clusterware/bin/alces
+$alcesbin service install alces-flight-www
+$alcesbin service install alces-flight-trigger
 # Don't conflict with existing IPA http setup
 sed -i -e '/.*http_enabled.*/c cw_ALCES_FLIGHT_WWW_http_enabled=true' \
     -e '/.*http_port.*/c cw_ALCES_FLIGHT_WWW_http_port=81' \
@@ -92,7 +93,7 @@ systemctl start clusterware-alces-flight-www
 systemctl start clusterware-alces-flight-trigger
 # Populate Flight Trigger scripts
 TRIGGERDIR="/opt/clusterware/var/lib/triggers/directory/triggers"
-mkdir $TRIGGERDIR
+mkdir -p $TRIGGERDIR
 for task in add-cluster add-node remove-cluster remove-node; do
     curl https://raw.githubusercontent.com/alces-software/symphony-directory/master/bin/cloud/${task}.sh > $TRIGGERDIR/$task
     chmod 750 $TRIGGERDIR/$task
