@@ -1,6 +1,6 @@
 #!/bin/bash
-set -ex
-DIRECTORY="10.75.0.3"
+
+DIRECTORY="10.75.0.254"
 _TRIGGER=/opt/clusterware/libexec/share/flight-trigger
 CLUSTER=$(hostname -d | cut -d . -f 1)
 CLIENTNAME=`hostname -s`
@@ -23,7 +23,7 @@ function check_cluster {
             tr -d '"' |
             cut -c -2)
 
-    if [ "$CHECK" == "FAILED" ];
+    if [ "$CHECK" == "FAILED - ENTRY EXISTS" ];
     then
         echo "Cluster entry $CLUSTER exists in $REALM"
     elif [ "$CHECK" == "OK" ];
