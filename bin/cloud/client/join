@@ -1,34 +1,53 @@
 #!/bin/bash
-
-DIRECTORY="10.75.0.5"
-DIRECTORYFQDN="directory.$DOMAIN"
-$_TRIGGER="/opt/clusterware/libexec/share/flight-trigger"
+set -ex
+DIRECTORY="10.75.0.3"
+_TRIGGER=/opt/clusterware/libexec/share/flight-trigger
 CLUSTER=$(hostname -d | cut -d . -f 1)
 CLIENTNAME=`hostname -s`
 CLIENTIP=`hostname -i`
 DOMAIN=`hostname -d | cut -d . -f 2-4`
+DIRECTORYFQDN="directory.$DOMAIN"
 REALM=$(echo $DOMAIN | sed -e 's/\(.*\)/\U\1/')
 JQBIN="/opt/clusterware/opt/jq/bin/jq"
-DIRECTORY="directory.$DOMAIN"
+ONETIMEPASS="moose"
+export cw_FLIGHT_TRIGGER_auth=alces:password
+
+function check_cluster {
+
+    # If the node is the first to appear from a cluster
+    # then the node should add its cluster entry to IPA.
+    # This prevents multiple hosts from failing if the
+    # login node hasn't yet booted and added its cluster entry
+    CHECK=$($_TRIGGER http://$DIRECTORY:25278/trigger/add-cluster $CLUSTER |
+            $JQBIN '.responses[].result' |
+            tr -d '"' |
+            cut -c -2)
+
+    if [ "$CHECK" == "FAILED" ];
+    then
+        echo "Cluster entry $CLUSTER exists in $REALM"
+    elif [ "$CHECK" == "OK" ];
+    then
+        echo "Added cluster entry $CLUSTER to $REALM"
+    fi
+
+    add_node
+
+}
 
 function add_node {
 
-    ADD=$($_TRIGGER http://$DIRECTORY:25278/trigger/add-cluster $CLUSTER |
+    ADD=$($_TRIGGER http://$DIRECTORY:25278/trigger/add-node $CLIENTNAME $CLIENTIP $CLUSTER $ONETIMEPASS |
     $JQBIN '.responses[].result' |
     tr -d '"' | cut -c -2)
 
-    if [ $ADD == "OK" ];
+    if [ "$ADD" == "OK" ];
     then
         echo "Cluster successfully added to domain"
 
         enrol_ipa
-        
-        # Prepare /etc/hosts
-        sed -i -e "/.*127.0.0.1 $CLIENTNAME.*/d" \
-               -e "/.*::1 $CLIENTNAME.*/d" \
-               /etc/hosts
 
-    elif [ $ADD == "FAIL" ];
+    elif [ "$ADD" == "FAIL" ];
     then
         echo "Unable to add node: $CLIENTNAME"
         exit 0
@@ -48,22 +67,22 @@ function enrol_ipa {
         /etc/sysconfig/network-scripts/ifcfg-eth0
 
     # Prepare /etc/resolv.conf
-    echo -e "search $CLUSTER.$DOMAIN $DOMAIN\nnameserver $DIRECTORYIP" > /etc/resolv.conf
+    echo -e "search $CLUSTER.$DOMAIN $DOMAIN\nnameserver $DIRECTORY" > /etc/resolv.conf
 
     # Install required packages
     yum -y -e0 install ipa-client ipa-admintools
-    
+
     # Sign up to IPA
     ipa-client-install \
         --no-ntp \
         --mkhomedir \
         --force-join \
         --realm="$REALM" \
-        --server="${DIRECTORY}" \
+        --server="${DIRECTORYFQDN}" \
         -w "$ONETIMEPASS" \
         --domain="${CLUSTER}.${DOMAIN}" \
         --unattended
 
 }
 
-add_node
+check_cluster
