@@ -2,7 +2,7 @@
 
 DIRECTORY="10.75.0.254"
 DIRECTORYFQDN="directory.$DOMAIN"
-$_TRIGGER="/opt/clusterware/libexec/share/flight-trigger"
+_TRIGGER="/opt/clusterware/libexec/share/flight-trigger"
 CLUSTER=$(hostname -d | cut -d . -f 1)
 CLIENTNAME=`hostname -s`
 CLIENTIP=`hostname -i`
