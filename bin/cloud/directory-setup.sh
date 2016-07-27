@@ -29,7 +29,7 @@ yum -y install ipa-server bind bind-dyndb-ldap ipa-server-dns
 ipa-server-install -a "$PASSWORD" --hostname `hostname -f`  -r "$REALM" -p "$PASSWORD" -n "$DOMAIN" --no-ntp  --setup-dns --forwarder="$FORWARDER" --reverse-zone="$REVERSEZONE" --ssh-trust-dns --unattended
 
 #Firewall Rules
-sed -i '/#APPLIANCERULES#/a -A INPUT -i eth0 -p tcp -m multiport --dports 80,81,25278,443,389,636,88,464,53 -j ACCEPT' /etc/sysconfig/iptables
+sed -i '/#APPLIANCERULES#/a -A INPUT -i eth0 -p tcp -m multiport --dports 80,8080,25278,443,389,636,88,464,53 -j ACCEPT' /etc/sysconfig/iptables
 sed -i '/#APPLIANCERULES#/a -A INPUT -i eth0 -p udp -m multiport --dports 88,464,53 -j ACCEPT' /etc/sysconfig/iptables
 systemctl restart iptables
 
@@ -84,7 +84,7 @@ $alcesbin service install alces-flight-www
 $alcesbin service install alces-flight-trigger
 # Don't conflict with existing IPA http setup
 sed -i -e '/.*http_enabled.*/c cw_ALCES_FLIGHT_WWW_http_enabled=true' \
-    -e '/.*http_port.*/c cw_ALCES_FLIGHT_WWW_http_port=81' \
+    -e '/.*http_port.*/c cw_ALCES_FLIGHT_WWW_http_port=8080' \
     -e '/.*https_port.*/c cw_ALCES_FLIGHT_WWW_https_port=8444' \
     /opt/clusterware/etc/alces-flight-www.rc
 $alcesbin service enable alces-flight-www
