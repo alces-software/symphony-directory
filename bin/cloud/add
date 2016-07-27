@@ -5,31 +5,37 @@ KEYUSER=admin
 
 CLIENTNAME=$1
 CLIENTIP=$2
-CLUSTER=$3
-ONETIMEPASS=$4
+ONETIMEPASS=$3
+CLUSTER=$4
 DIRECTORYAPPLIANCE=`hostname -f`
 DOMAIN=`hostname -d`
 REALM=$(echo $DOMAIN | sed -e 's/\(.*\)/\U\1/')
 
 function check_cluster {
 
+  if [ -z $CLUSTER ];
+  then
+    check_node
+  else
   if [ ! "$(ipa dnszone-find | grep "${CLUSTER}.${DOMAIN}." | awk '{print $3}')" == "${CLUSTER}.${DOMAIN}." ];
   then
-
     add_cluster
-
   else
-
     check_node
-
+  fi
   fi
 
 }
 
 function add_cluster {
 
-  ipa dnszone-add $CLUSTER.$DOMAIN --name-server $DIRECTORYAPPLIANCE. > /dev/null 2>&1
-  ipa dnsrecord-add $DOMAIN $CLUSTER --ns-rec=$DIRECTORYAPPLIANCE. > /dev/null 2>&1
+  if [ -z $CLUSTER ];
+  then
+    ipa dnszone-add $DOMAIN --name-server $DIRECTORYAPPLIANCE.
+  else
+    ipa dnszone-add $CLUSTER.$DOMAIN --name-server $DIRECTORYAPPLIANCE. > /dev/null 2>&1
+    ipa dnsrecord-add $DOMAIN $CLUSTER --ns-rec=$DIRECTORYAPPLIANCE. > /dev/null 2>&1
+  fi
 
   check_node
 
@@ -37,9 +43,16 @@ function add_cluster {
 
 function check_node {
 
-  DOMAINRECORDS=$(ipa dnsrecord-find $CLUSTER.$DOMAIN $CLIENTNAME |
-                   grep "${CLIENTNAME}" |
-                   awk '{print $3}')
+  if [ -z $CLUSTER ];
+  then
+    DOMAINRECORDS=$(ipa dnsrecord-find $DOMAIN $CLIENTNAME |
+                    grep "${CLIENTNAME}" |
+                    awk '{print $3}')
+  else
+    DOMAINRECORDS=$(ipa dnsrecord-find $CLUSTER.$DOMAIN $CLIENTNAME |
+                    grep "${CLIENTNAME}" |
+                    awk '{print $3}')
+  fi
   if [ "$DOMAINRECORDS" == "$CLIENTNAME" ];
   then
     echo "FAIL - ENTRY EXISTS"
@@ -53,17 +66,24 @@ function check_node {
 
 function add_node {
 
-  ipa host-add $CLIENTNAME.$CLUSTER.$DOMAIN --ip-address=$CLIENTIP
-  ipa host-mod $CLIENTNAME.$CLUSTER.$DOMAIN --password="${ONETIMEPASS}"
-  ipa hostgroup-add-member usernodes --hosts $CLIENTNAME.$CLUSTER.$DOMAIN
+  if [ -z $CLUSTER ];
+  then
+    ipa host-add $CLIENTNAME.$DOMAIN --ip-address=$CLIENTIP
+    ipa host-mod $CLIENTNAME.$DOMAIN --password="${ONETIMEPASS}"
+    ipa hostgroup-add-member usernodes --hosts $CLIENTNAME.$DOMAIN
+  else
+    ipa host-add $CLIENTNAME.$CLUSTER.$DOMAIN --ip-address=$CLIENTIP
+    ipa host-mod $CLIENTNAME.$CLUSTER.$DOMAIN --password="${ONETIMEPASS}"
+    ipa hostgroup-add-member usernodes --hosts $CLIENTNAME.$CLUSTER.$DOMAIN
+  fi
 
 }
 
-if [[ -z $CLIENTNAME || -z $CLIENTIP || -z $CLUSTER || -z $ONETIMEPASS ]];
+if [[ -z $CLIENTNAME || -z $CLIENTIP || -z $ONETIMEPASS ]];
 then
 
   echo "One or more parameters not provided"
-  echo "Usage: $0 <client name> <client ip> <cluster> <one time password>"
+  echo "Usage: $0 <client name> <client ip> <cluster (optional)> <one time password>"
 
 else
 

@@ -3,10 +3,17 @@
 DIRECTORY="10.75.0.254"
 DIRECTORYFQDN="directory.$DOMAIN"
 _TRIGGER="/opt/clusterware/libexec/share/flight-trigger"
-CLUSTER=$(hostname -d | cut -d . -f 1)
+DOMAIN=$(hostname -d | grep -o "\." | wc -l)
+if [ "$DOMAIN" == "2" ];
+then
+    DOMAIN=$(hostname -d)
+elif [ "$DOMAIN" == "3" ];
+then
+    DOMAIN=$(hostname -d | cut -d . -f 2-4)
+    CLUSTER=$(hostname -d | cut -d . -f 1)
+fi
 CLIENTNAME=`hostname -s`
 CLIENTIP=`hostname -i`
-DOMAIN=`hostname -d | cut -d . -f 2-4`
 REALM=$(echo $DOMAIN | sed -e 's/\(.*\)/\U\1/')
 JQBIN="/opt/clusterware/opt/jq/bin/jq"
 export cw_FLIGHT_TRIGGER_auth=alces:password
@@ -18,10 +25,11 @@ function remove_node {
              tr -d '"' |
              cut -c -2)
 
+
     if [ "$REMOVE" == "FAIL - NO ENTRY EXISTS" ];
     then
 
-        echo "A node entry for $CLIENTNAME.$CLUSTER.$DOMAIN does not exist"
+        echo "A node entry for $CLIENTNAME does not exist"
         exit 0
 
     elif [ "$REMOVE" == "OK" ];

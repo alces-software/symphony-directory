@@ -11,59 +11,68 @@ REVERSEZONE="`hostname -i | cut -d . -f 3`.`hostname -i | cut -d . -f 2`.`hostna
 
 function check_node {
 
-    DOMAINRECORDS=$(ipa dnsrecord-find $CLUSTER.$DOMAIN $CLIENTNAME |
-                     grep "${CLIENTNAME}" |
-                     awk '{print $3}')
-    if [ -z "$DOMAINRECORDS" ];
+    if [ -z $CLUSTER ];
+    then
+      DOMAINRECORDS=$(ipa dnsrecord-find $DOMAIN $CLIENTNAME |
+                      grep "${CLIENTNAME}" |
+                      awk '{print $3}')
+    elif [ ! -z $CLUSTER ];
+    then
+      DOMAINRECORDS=$(ipa dnsrecord-find $CLUSTER.$DOMAIN $CLIENTNAME |
+                      grep "${CLIENTNAME}" |
+                      awk '{print $3}')
+    fi
+    if [ "$DOMAINRECORDS" == "$CLIENTNAME" ];
+    then
+      echo "OK"
+      remove_node >> /dev/null
+    elif [ -z "$DOMAINRECORDS" ];
     then
         echo "FAIL - NO ENTRY EXISTS"
         exit 0
-    elif [ "$DOMAINRECORDS" == "$CLIENTNAME" ];
-    then
-        echo "OK"
-        remove_node >> /dev/null
     fi
 
 }
 
 function remove_node {
 
-    ipa host-del $CLIENTNAME.$CLUSTER.$REALM --updatedns --continue
-
-    # At this point, check if we are the last remaining node
-    RECORDS=$(ipa dnsrecord-find $CLUSTER.$DOMAIN |
-              # grep -v -E '(Record\ name\:\ \@|Record\ name\:\ _kerberos|NS\ record\:\ directory.bedrock.alces.cluster|TXT\ record\:\ BEDROCK.ALCES.CLUSTER)' |
-              grep -v "Record\ name\:\ \@" |
-              grep -v "Record\ name\:\ _kerberos" |
-              grep -v "NS\ record\"\ directory.$DOMAIN" |
-              grep -v "TXT\ record\:\ $REALM" |
-              grep "Record\ name:" |
-              awk '{print $3}' |
-              wc -l)
-    if [ "$RECORDS" -eq 0 ];
+    if [ -z $CLUSTER ];
     then
-      remove_cluster
-    elif [ "$RECORDS" -gt 0 ];
+        ipa host-del $CLIENTNAME.$DOMAIN --updatedns --continue
+    elif [ ! -z $CLUSTER ];
     then
-      exit 0
+        ipa host-del $CLIENTNAME.$CLUSTER.$REALM --updatedns --continue
+        RECORDS=$(ipa dnsrecord-find $CLUSTER.$DOMAIN |
+                  grep -v "Record\ name\:\ \@" |
+                  grep -v "Record\ name\:\ _kerberos" |
+                  grep -v "NS\ record\"\ directory.$DOMAIN" |
+                  grep -v "TXT\ record\:\ $REALM" |
+                  grep "Record\ name:" |
+                  awk '{print $3}' |
+                  wc -l)
+        if [ "$RECORDS" -eq 0 ];
+        then
+          remove_cluster
+        fi
     fi
 
 }
 
 function remove_cluster {
 
-  if [ "$(ipa dnszone-find | grep "${CLUSTER}.${DOMAIN}." | awk '{print $3}')" == "${CLUSTER}.${DOMAIN}." ];
-  then
-
-    # Remove the cluster from the realm
-    ipa dnsrecord-del $REALM $CLUSTER --del-all
-    ipa dnszone-del $CLUSTER.$REALM > /dev/null 2>&1
-
-  fi
+    if [ ! -z $CLUSTER ];
+    then
+        if [ "$(ipa dnszone-find | grep "${CLUSTER}.${DOMAIN}." | awk '{print $3}')" == "${CLUSTER}.${DOMAIN}." ];
+        then
+            # Remove the cluster from the realm
+            ipa dnsrecord-del $REALM $CLUSTER --del-all
+            ipa dnszone-del $CLUSTER.$REALM > /dev/null 2>&1
+        fi
+    fi
 
 }
 
-if [[ -z $CLIENTNAME || -z $CLUSTER ]];
+if [ -z $CLIENTNAME ];
 then
     echo "One or more settings not provided"
     echo "Usage: $0 <client name> <cluster>"

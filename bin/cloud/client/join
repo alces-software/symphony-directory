@@ -16,17 +16,25 @@ then
     export cw_FLIGHT_TRIGGER_auth=alces:$TRIGGERPASSWORD
 fi
 
-CLUSTER=$(hostname -d | cut -d . -f 1)
 CLIENTNAME=`hostname -s`
 CLIENTIP=`hostname -i`
-DOMAIN=`hostname -d | cut -d . -f 2-4`
+DOMAIN=$(hostname -d | grep -o "\." | wc -l)
+if [ "$DOMAIN" == "2" ];
+then
+  DOMAIN=$(hostname -d)
+elif [ "$DOMAIN" == "3" ];
+then
+  DOMAIN=$(hostname -d | cut -d . -f 2-4)
+  CLUSTER=$(hostname -d | cut -d . -f 1)
+fi
 DIRECTORYFQDN="directory.$DOMAIN"
 REALM=$(echo $DOMAIN | sed -e 's/\(.*\)/\U\1/')
 ONETIMEPASS=$(openssl rand -hex 6)
 
 function add {
 
-    ADD=$($_TRIGGER http://$DIRECTORY:25278/trigger/add $CLIENTNAME $CLIENTIP $CLUSTER $ONETIMEPASS |
+
+    ADD=$($_TRIGGER http://$DIRECTORY:25278/trigger/add $CLIENTNAME $CLIENTIP $ONETIMEPASS $CLUSTER |
     $JQBIN '.responses[].result' |
     tr -d '"' | cut -c -2)
 
@@ -56,12 +64,19 @@ function enrol_ipa {
         /etc/sysconfig/network-scripts/ifcfg-eth0
 
     # Prepare /etc/resolv.conf
-    echo -e "search $CLUSTER.$DOMAIN $DOMAIN\nnameserver $DIRECTORY" > /etc/resolv.conf
+    if [ -z $CLUSTER ];
+    then
+      echo -e "search $DOMAIN\nnameserver $DIRECTORY" > /etc/resolv.conf
+    else
+      echo -e "search $CLUSTER.$DOMAIN $DOMAIN\nnameserver $DIRECTORY" > /etc/resolv.conf
+    fi
 
     # Install required packages
     yum -y -e0 install ipa-client ipa-admintools
 
     # Sign up to IPA
+
+
     ipa-client-install \
         --no-ntp \
         --mkhomedir \
@@ -69,7 +84,7 @@ function enrol_ipa {
         --realm="$REALM" \
         --server="${DIRECTORYFQDN}" \
         -w "$ONETIMEPASS" \
-        --domain="${CLUSTER}.${DOMAIN}" \
+        --domain="`hostname -d`" \
         --unattended
 
 }
