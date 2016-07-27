@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+
 KEYTAB=/root/admin.keytab
 KEYUSER=admin
 
@@ -30,7 +30,7 @@ then
     echo "Usage: $0 <cluster name>"
     exit 0
 else
-    kinit -kt $KEYTAB $KEYUSER@$REALM
+    kinit -kt $KEYTAB $KEYUSER
     check_cluster
     kdestroy
 fi
