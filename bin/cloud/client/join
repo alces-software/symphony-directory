@@ -1,53 +1,42 @@
 #!/bin/bash
 
-DIRECTORY="10.75.0.254"
+JQBIN="/opt/clusterware/opt/jq/bin/jq"
 _TRIGGER=/opt/clusterware/libexec/share/flight-trigger
+DIRECTORY=$1
+TRIGGERPASSWORD=$2
+
+if [ -z $DIRECTORY ];
+then
+    DIRECTORY="10.75.0.254"
+fi
+
+if [ -z $TRIGGERPASSWORD ];
+then
+    TRIGGERPASSWORD="password"
+    export cw_FLIGHT_TRIGGER_auth=alces:$TRIGGERPASSWORD
+fi
+
 CLUSTER=$(hostname -d | cut -d . -f 1)
 CLIENTNAME=`hostname -s`
 CLIENTIP=`hostname -i`
 DOMAIN=`hostname -d | cut -d . -f 2-4`
 DIRECTORYFQDN="directory.$DOMAIN"
 REALM=$(echo $DOMAIN | sed -e 's/\(.*\)/\U\1/')
-JQBIN="/opt/clusterware/opt/jq/bin/jq"
-ONETIMEPASS="moose"
-export cw_FLIGHT_TRIGGER_auth=alces:password
+ONETIMEPASS=$(openssl rand -hex 6)
 
-function check_cluster {
+function add {
 
-    # If the node is the first to appear from a cluster
-    # then the node should add its cluster entry to IPA.
-    # This prevents multiple hosts from failing if the
-    # login node hasn't yet booted and added its cluster entry
-    CHECK=$($_TRIGGER http://$DIRECTORY:25278/trigger/add-cluster $CLUSTER |
-            $JQBIN '.responses[].result' |
-            tr -d '"' |
-            cut -c -2)
-
-    if [ "$CHECK" == "FAILED - ENTRY EXISTS" ];
-    then
-        echo "Cluster entry $CLUSTER exists in $REALM"
-    elif [ "$CHECK" == "OK" ];
-    then
-        echo "Added cluster entry $CLUSTER to $REALM"
-    fi
-
-    add_node
-
-}
-
-function add_node {
-
-    ADD=$($_TRIGGER http://$DIRECTORY:25278/trigger/add-node $CLIENTNAME $CLIENTIP $CLUSTER $ONETIMEPASS |
+    ADD=$($_TRIGGER http://$DIRECTORY:25278/trigger/add $CLIENTNAME $CLIENTIP $CLUSTER $ONETIMEPASS |
     $JQBIN '.responses[].result' |
     tr -d '"' | cut -c -2)
 
     if [ "$ADD" == "OK" ];
     then
-        echo "Cluster successfully added to domain"
+        echo "Node successfully added to domain"
 
         enrol_ipa
 
-    elif [ "$ADD" == "FAIL" ];
+    elif [ "$ADD" == "FAIL - ENTRY EXISTS" ];
     then
         echo "Unable to add node: $CLIENTNAME"
         exit 0
@@ -85,4 +74,4 @@ function enrol_ipa {
 
 }
 
-check_cluster
+add

@@ -94,7 +94,7 @@ systemctl start clusterware-alces-flight-trigger
 # Populate Flight Trigger scripts
 TRIGGERDIR="/opt/clusterware/var/lib/triggers/directory/triggers"
 mkdir -p $TRIGGERDIR
-for task in add-cluster add-node remove-cluster remove-node; do
-    curl https://raw.githubusercontent.com/alces-software/symphony-directory/master/bin/cloud/${task}.sh > $TRIGGERDIR/$task
+for task in add remove; do
+    curl https://raw.githubusercontent.com/alces-software/symphony-directory/master/bin/cloud/$task > $TRIGGERDIR/$task
     chmod 750 $TRIGGERDIR/$task
 done
