@@ -35,7 +35,7 @@ systemctl restart iptables
 
 echo $PASSWORD | kinit admin
 ipa config-mod --defaultshell /bin/bash
-ipa config-mod --homedirectory /users
+ipa config-mod --homedirectory /flightusers
 ipa group-add ClusterUsers --desc="Generic Cluster Users"
 ipa group-add AdminUsers --desc="Admin Cluster Users"
 ipa config-mod --defaultgroup ClusterUsers
