@@ -83,18 +83,20 @@ alcesbin=/opt/clusterware/bin/alces
 $alcesbin service install alces-flight-www
 $alcesbin service install alces-flight-trigger
 # Don't conflict with existing IPA http setup
-sed -i -e '/.*http_enabled.*/c cw_ALCES_FLIGHT_WWW_http_enabled=true' \
-    -e '/.*http_port.*/c cw_ALCES_FLIGHT_WWW_http_port=8080' \
-    -e '/.*https_port.*/c cw_ALCES_FLIGHT_WWW_https_port=8444' \
-    /opt/clusterware/etc/alces-flight-www.rc
+sed -i -e '/.*http_enabled.*/c cw_ALCES_FLIGHT_WWW_http_enabled=false' \
+       -e '/.*http_redirect.*/c cw_ALCES_FLIGHT_WWW_http_redirect_enabled=true' \
+       -e '/.*https_enabled.*/c cw_ALCES_FLIGHT_WWW_https_enabled=true' \
+       -e '/.*https_port.*/c cw_ALCES_FLIGHT_WWW_https_port=8444' \
+       -e '/.*ssl_strategy.*/c cw_ALCES_FLIGHT_WWW_ssl_strategy=selfsigned' \
+       /opt/clusterware/etc/alces-flight-www.rc
 $alcesbin service enable alces-flight-www
 $alcesbin service enable alces-flight-trigger
 systemctl start clusterware-alces-flight-www
 systemctl start clusterware-alces-flight-trigger
 # Populate Flight Trigger scripts
 TRIGGERDIR="/opt/clusterware/var/lib/triggers/directory/triggers"
+DIRECTORYDIR="/opt/symphony-directory"
 mkdir -p $TRIGGERDIR
-for task in add remove; do
-    curl https://raw.githubusercontent.com/alces-software/symphony-directory/master/bin/cloud/$task > $TRIGGERDIR/$task
-    chmod 750 $TRIGGERDIR/$task
-done
+git clone https://github.com/alces-software/symphony-directory.git $DIRECTORYDIR
+ln -s $DIRECTORYDIR/bin/cloud/* $TRIGGERDIR
+chmod 750 $DIRECTORYDIR/bin/cloud/*
