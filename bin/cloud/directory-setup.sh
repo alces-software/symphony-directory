@@ -29,7 +29,7 @@ yum -y install ipa-server bind bind-dyndb-ldap ipa-server-dns
 ipa-server-install -a "$PASSWORD" --hostname `hostname -f`  -r "$REALM" -p "$PASSWORD" -n "$DOMAIN" --no-ntp  --setup-dns --forwarder="$FORWARDER" --reverse-zone="$REVERSEZONE" --ssh-trust-dns --unattended
 
 #Firewall Rules
-sed -i '/#APPLIANCERULES#/a -A INPUT -i eth0 -p tcp -m multiport --dports 80,8080,25278,443,389,636,88,464,53 -j ACCEPT' /etc/sysconfig/iptables
+sed -i '/#APPLIANCERULES#/a -A INPUT -i eth0 -p tcp -m multiport --dports 80,8444,25278,443,389,636,88,464,53 -j ACCEPT' /etc/sysconfig/iptables
 sed -i '/#APPLIANCERULES#/a -A INPUT -i eth0 -p udp -m multiport --dports 88,464,53 -j ACCEPT' /etc/sysconfig/iptables
 systemctl restart iptables
 
