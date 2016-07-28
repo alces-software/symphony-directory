@@ -20,7 +20,7 @@ export cw_FLIGHT_TRIGGER_auth=alces:password
 
 function remove_node {
 
-    REMOVE=$($_TRIGGER http://$DIRECTORY:25278/trigger/remove $CLIENTNAME $CLUSTER |
+    REMOVE=$($_TRIGGER https://$DIRECTORY:8444/trigger/remove $CLIENTNAME $CLUSTER |
              $JQBIN '.responses[].result' |
              tr -d '"' |
              cut -c -2)
