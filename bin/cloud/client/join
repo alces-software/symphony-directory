@@ -1,9 +1,6 @@
 #!/bin/bash
-
 JQBIN="/opt/clusterware/opt/jq/bin/jq"
 _TRIGGER=/opt/clusterware/libexec/share/flight-trigger
-DIRECTORY=$1
-TRIGGERPASSWORD=$2
 
 if [ -z $DIRECTORY ];
 then
