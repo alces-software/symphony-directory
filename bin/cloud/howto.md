@@ -37,7 +37,8 @@ curl -sL https://git.io/vKFGI | /bin/bash
   * The environment domain field should contain the name of your infrastructure Heat template name, e.g. `tatooine`
   * Select the correct image - the `clusterware-static` image should be used. 
   * Select the correct network to join, for example `$DOMAIN-prv`
-  * In the S3 related parameter fields, enter some example text - until the customiser works on OpenStack (see notes down the bottom)
+  * S3 region: `eu-west-1`, Alces Customizer Bucket: `s3://alces-flight-nmi0ztdmyzm3ztm3`, Alces Customizer Profiles: `default`
+  * Enter example values in the S3 key fields
 * Once the stack has finished creating - the floating IP of the login node will be displayed. 
 * To remove a node from IPA and unenrol the IPA client, run the following. If the node is the last entry in a cluster, the cluster will also be removed.
 
@@ -89,6 +90,7 @@ curl -sL https://git.io/vKFZi | /bin/bash
 
 * The ClusterWare SSH key does not seem to work when attempting to SSH between hosts. Each node will have the ClusterWare generated key in its authorised keys, but will not accept the key
 * Currently, nodes have no way of performing their `leave` script - this has to be done manually either from the directory server or from the node itself
+* There is a race condition between Bumblebee performing its configuration and Clusterware starting the customisation process. If Bumblebee hasn't quite finished configuring, the IPA join script will break as `/etc/hosts` hasn't yet been configured properly. This could be solved by editing the ClusterWare configurator systemd file to start after bumblebee-configurator 
 
 ### AWS
 
