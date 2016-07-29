@@ -18,7 +18,13 @@ Steps to create the following environment:
   * Select the correct image, or nothing will work! The `bumblebee-develop` image should be used. 
 * Launch the Heat stack
 * Once the stack has finished creating - the floating IP of the directory server will be displayed. Log in to the directory server as the `alces` user and switch to the root account
-* (fill in something about directory set up)
+* Run the directory set up script: 
+
+```bash
+curl -sL https://git.io/vKFGI | /bin/bash
+```
+
+* Once the set up has finished - continue to creating a cluster
 
 ### Setting up a cluster
 
@@ -31,7 +37,13 @@ Steps to create the following environment:
   * The environment domain field should contain the name of your infrastructure Heat template name, e.g. `tatooine`
   * Select the correct image - the `clusterware-static` image should be used. 
   * Select the correct network to join, for example `$DOMAIN-prv`
-* Once the stack has finished creating - the floating IP of the login node will be displayed. Log in to the directory server as the `alces` user. 
+  * In the S3 related parameter fields, enter some example text - until the customiser works on OpenStack (see notes down the bottom)
+* Once the stack has finished creating - the floating IP of the login node will be displayed. 
+* To remove a node from IPA and unenrol the IPA client, run the following. If the node is the last entry in a cluster, the cluster will also be removed.
+
+```bash
+curl -sL https://git.io/vKFZi | /bin/bash
+```
 
 ## AWS
 
@@ -65,6 +77,11 @@ curl -sL https://git.io/vKFGI | /bin/bash
   * Select the correct subnet, for example `$DOMAIN-prv`
 * Launch the CloudFormation stack
 * When the cluster is ready - the public IP address of the login node will be displayed
+* To remove a node from IPA and unenrol the IPA client, run the following. If the node is the last entry in a cluster, the cluster will also be removed.
+
+```bash
+curl -sL https://git.io/vKFZi | /bin/bash
+```
 
 ## Issues
 
