@@ -48,16 +48,18 @@ function check_node {
     DOMAINRECORDS=$(ipa dnsrecord-find $DOMAIN $CLIENTNAME |
                     grep "${CLIENTNAME}" |
                     awk '{print $3}')
+    if [ "$DOMAINRECORDS" == "$CLIENTNAME" ];
+    then
+        ipa host-del $CLIENTNAME.$DOMAIN --updatedns --continue
+    fi
   else
     DOMAINRECORDS=$(ipa dnsrecord-find $CLUSTER.$DOMAIN $CLIENTNAME |
                     grep "${CLIENTNAME}" |
                     awk '{print $3}')
-  fi
-  if [ "$DOMAINRECORDS" == "$CLIENTNAME" ];
-  then
-    echo "FAIL - ENTRY EXISTS"
-    exit 0
-  else
+    if [ "$DOMAINRECORDS" == "$CLIENTNAME" ];
+    then
+        ipa host-del $CLIENTNAME.$CLUSTER.$REALM --updatedns --continue
+    fi
     echo "OK"
     add_node >> /dev/null
   fi
