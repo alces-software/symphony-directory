@@ -1,0 +1,520 @@
+#!/bin/bash
+
+OPTION=$1
+OPTION2=$2
+OPTION3=$3
+OPTION4=$4
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+PURPLE='\033[0;35m'
+BOLD='\033[1m'
+NC='\033[0m'
+GREEN='\033[0;32m'
+PARENTPID=$$
+
+LOGDIR="/var/log/alces-directory"
+if [ ! -d $LOGDIR ];
+then
+  mkdir -p $LOGDIR
+  LOGFILE="$LOGDIR/setup.log"
+  touch $LOGFILE
+
+fi
+
+help() {
+
+    printf "\n"
+    printf "Alces Directory Configuration Tool\n"
+    printf "\n"
+    printf "  ${BOLD}Setup utilities${NC}\n"
+    printf "    configure             Customize your Directory installation\n"
+    printf "    setup                 Install and configure your Directory instance\n"
+    printf "\n\n"
+    printf "  ${BOLD}User management utilities${NC}\n"
+    printf "    user add              Add a user to your realm\n"
+    printf "    user remove           Remove a user from your realm\n"
+    printf "    user list             List all users in your realm\n"
+    printf "\n"
+
+}
+
+user_add_help() {
+
+    printf "\n"
+    printf "Alces Directory Configuration Tool\n"
+    printf "\n"
+    printf "  ${BOLD}User Add - options${NC}\n"
+    printf "      -f		User first name (required)\n"
+    printf "      -l		User last name (required)\n"
+    printf "      -u		UNIX username (required)\n"
+    printf "      -s		SSH public key (optional)\n"
+
+}
+
+user_remove_help() {
+
+    printf "\n"
+    printf "Alces Directory Configuration Tool\n"
+    printf "\n"
+    printf "  ${BOLD}User Remove - options${NC}\n"
+    printf "      Usage: 'directory user remove <username>'\n"
+
+}
+
+title() {
+
+    printf "\n ${YELLOW}>${NC} ${BOLD}$1${NC}\n"
+
+}
+
+doing() {
+
+    if [ -z "$2" ]; then
+	pad=12
+    else
+	pad=$2
+    fi
+    printf "   ${PURPLE}> ${NC} %${pad}s ... " "$1"
+
+}
+
+say_done() {
+
+    if [ $1 -gt 0 ]; then
+	 '${RED}FAIL${NC}'
+	exit 1
+    else
+	printf "${GREEN}OK${NC} \n"
+    fi
+}
+
+configure() {
+
+    config=/opt/symphony-directory/etc/config
+    autoconfig=/opt/symphony-directory/etc/autoconfig
+    if [ -f $config ];
+    then
+        echo "Configuration file present - please remove before continuing"
+        exit 1
+    elif [ ! -f $config ];
+    then
+        IPA=$(openssl rand -hex 8)
+        TRIGGER=$(openssl rand -hex 8)
+        mkdir -p /opt/symphony-directory/etc
+        touch $config
+        chmod 0640 $config
+        if [ ! -f $autoconfig ];
+        then
+            for service in IPA TRIGGER; do
+                genpwd=$(openssl rand -hex 8)
+                printf "\n"
+                printf "${BOLD}${service} administrator password${NC}\n"
+                printf "Please enter your desired ${service} password - or press Enter to use the default generated password\n"
+                prompt=$(printf "${BOLD}[${NC}$genpwd${BOLD}]${NC}: ")
+                while IFS= read -p "$prompt" -r -s -n 1 input
+                do
+                    if [[ $input == $'\0' ]];
+                    then
+                        break
+                    elif [[ $input == $'\177' ]];
+                    then
+                        prompt=$'\b \b'
+                        pwd="${pwd%?}"
+                    else
+                        prompt='*'
+                        pwd+="$input"
+                    fi
+                done
+                if [ -z $pwd ];
+                then
+                    echo "${service}PASSWORD=${genpwd}" >> $config
+                elif [ ! -z $pwd ];
+                then
+                    echo "${service}PASSWORD=${pwd}" >> $config
+                fi
+                printf "\n\n"
+                unset pwd
+            done
+        elif [ -f $autoconfig ];
+        then
+            echo "IPAPASSWORD=$IPA" >> $config
+            echo "TRIGGERPASSWORD=$TRIGGER" >> $config
+        fi
+    fi
+
+}
+
+authenticate() {
+
+    kinit -kt /root/admin.keytab admin
+
+}
+
+auth_destroy() {
+
+    kdestroy
+
+}
+
+user() {
+
+    if [ ! -f /opt/symphony-directory/configured ];
+    then
+        echo "Directory server has not yet been configured"
+        echo "Please perform setup before continuing"
+        exit 1
+    fi
+
+    if [ "$OPTION2" == "add" ];
+    then
+        NUMOPTS=$#
+        for ((i=1 ; i <= NUMOPTS ; i++))
+        do
+            OPT=$3
+            OPTARG=$4
+            while getopts f:l:u:s:h OPT; do
+                case "$OPT" in
+                    f)
+                        first=$OPTARG
+                        ;;
+                    l)
+                        last=$OPTARG
+                        ;;
+                    u)
+                        username=$OPTARG
+                        ;;
+                    s)
+                        sshkey=$OPTARG
+                        ;;
+                    h)
+                        user_add_help
+                        ;;
+                    ?)
+                        user_add_help
+                        ;;
+                esac
+            done
+            shift 2
+        done
+        if [ -z $first ] || [ -z $last ] || [ -z $username ];
+        then
+            exit 1
+        fi
+        if [ -z $sshkey ];
+        then
+            authenticate
+            ipa user-add $username \
+                --first $first \
+                --last $last
+            auth_destroy
+        elif [ ! -z $sshkey ];
+        then
+            authenticate
+            ipa user-add $username \
+                --first $first \
+                --last $last \
+                --sshpubkey="${sshkey}"
+            auth_destroy
+        fi
+    elif [ "$OPTION2" == "remove" ];
+    then
+        if [ "$OPTION3" == "-h" ] || [ "$OPTION3" == "--help" ] || [ "$OPTION3" == "help" ];
+        then
+            user_remove_help
+        elif [ "$OPTION3" == "remove" ];
+        then
+            finduser=$(ipa user-find $username)
+            if [ -z "$finduser" ];
+            then
+                echo "No username $username exists"
+                exit 1
+            elif [ ! -z "$finduser" ];
+            then
+                authenticate
+                ipa user-del $username --continue
+                auth_destroy
+            fi
+        fi
+    elif [ "$OPTION2" == "list" ];
+    then
+        authenticate
+        ipa user-find | grep "User\ login" | awk '{print $3}'
+        auth_destroy
+    fi
+
+}
+
+check_existing() {
+
+    if [ -f /opt/symphony-directory/configured ];
+    then
+        echo "System has previously been configured"
+        exit 1
+    fi
+
+}
+
+setup_prepare_hosts() {
+
+    sed -i '/127.0.0.1 directory/d' /etc/hosts
+    sed -i '/::1 directory/d' /etc/hosts
+
+}
+
+setup_prepare_resolv() {
+
+    sed -i -e "s/^PEERDNS.*$/PEERDNS=\"no\"/g" /etc/sysconfig/network-scripts/ifcfg-eth0
+
+}
+
+setup_set_info() {
+
+    DOMAIN=`hostname -d`
+    REALM=`echo $DOMAIN | sed -e 's/\(.*\)/\U\1/'`
+    FORWARDER=`grep nameserver /etc/resolv.conf | awk 'NR==1{print $2}'`
+    REVERSEZONE="`hostname -i | cut -d . -f 3`.`hostname -i | cut -d . -f 2`.`hostname -i | cut -d . -f 1`.in-addr.arpa."
+    if [ -z $IPAPASSWORD ];
+    then
+        IPAPASSWORD=$(openssl rand -hex 8)
+        echo "IPAPASSWORD=${IPAPASSWORD}" >> /opt/symphony-directory/etc/config
+    fi
+
+}
+
+setup_install_haveged() {
+
+    wget ftp://195.220.108.108/linux/epel/7/x86_64/h/haveged-1.9.1-1.el7.x86_64.rpm \
+        -O /tmp/haveged.rpm
+    rpm -Uvh /tmp/haveged.rpm
+    rm -f /tmp/haveged.rpm
+    systemctl start haveged
+    systemctl enable haveged
+
+}
+
+setup_install_ipatools() {
+
+    yum -y -e0 install \
+        ipa-server \
+        bind \
+        bind-dyndb-ldap \
+        ipa-server-dns
+
+}
+
+setup_ipa_install() {
+
+    ipa-server-install \
+        -a "$IPAPASSWORD" \
+        --hostname `hostname -f` \
+        -r "$REALM" \
+        -p "$IPAPASSWORD" \
+        -n "$DOMAIN" \
+        --no-ntp \
+        --setup-dns \
+        --forwarder="$FORWARDER" \
+        --reverse-zone="$REVERSEZONE" \
+        --ssh-trust-dns \
+        --unattended
+
+}
+
+setup_configure_firewall() {
+
+    sed -i '/#APPLIANCERULES#/a -A INPUT -i eth0 -p tcp -m multiport --dports 80,8444,25278,443,389,636,88,464,53 -j ACCEPT' /etc/sysconfig/iptables
+    sed -i '/#APPLIANCERULES#/a -A INPUT -i eth0 -p udp -m multiport --dports 88,464,53 -j ACCEPT' /etc/sysconfig/iptables
+    systemctl restart iptables
+
+}
+
+ipa_host_config() {
+
+    echo $IPAPASSWORD | kinit admin
+    ipa config-mod --defaultshell /bin/bash
+    ipa config-mod --homedirectory /flightusers
+    ipa group-add ClusterUsers --desc="Generic Cluster Users"
+    ipa group-add AdminUsers --desc="Admin Cluster Users"
+    ipa config-mod --defaultgroup ClusterUsers
+    ipa pwpolicy-mod --maxlife=999
+    ipa user-add flightuser --first Alces --last Flight --random
+    ipa group-add-member AdminUsers --users flightuser
+    ipa hbacrule-disable allow_all
+    ipa hostgroup-add usernodes --desc "All nodes allowing standard user access"
+    ipa hostgroup-add adminnodes --desc "All nodes allowing only admin user access"
+    ipa hbacrule-add adminaccess --desc "Allow admin access to admin hosts"
+    ipa hbacrule-add useraccess --desc "Allow user access to user hosts"
+    ipa hbacrule-add-service adminaccess --hbacsvcs sshd
+    ipa hbacrule-add-service useraccess --hbacsvcs sshd
+    ipa hbacrule-add-user adminaccess --groups AdminUsers
+    ipa hbacrule-add-user useraccess --groups ClusterUsers
+    ipa hbacrule-add-host adminaccess --hostgroups adminnodes
+    ipa hbacrule-add-host useraccess --hostgroups usernodes
+    ipa sudorule-add --cmdcat=all All
+    ipa sudorule-add-user --groups=adminusers All
+    ipa sudorule-mod All --hostcat='all'
+    ipa sudorule-add-option All --sudooption '!authenticate'
+
+}
+
+ipa_hadder_config() {
+
+    ipa user-add --first=Host --last=Adder hadder
+    ipa privilege-add "Add computers" --desc "Add computers"
+    ipa privilege-add-permission "Add computers" --permissions="System: Add Hosts"
+    ipa privilege-add-permission "Add computers" --permissions="System: Add DNS Entries"
+    ipa privilege-add-permission "Add computers" --permissions="System: Read DNS Entries"
+    ipa privilege-add-permission "Add computers" --permissions="System: Modify Hosts"
+    ipa privilege-add-permission "Add computers" --permissions="System: Manage Host Enrollment Password"
+    ipa privilege-add-permission "Add computers" --permissions="System: Manage Host Keytab"
+    ipa privilege-add-permission "Add computers" --permissions="System: Modify Hostgroup Membership"
+    ipa privilege-add-permission "Add computers" --permissions="System: Remove Hosts"
+    ipa privilege-add-permission "Add computers" --permissions="System: Remove DNS Entries"
+    ipa privilege-add-permission "Add computers" --permissions="System: Update DNS Entries"
+    ipa role-add "Host Adder" --desc="Can add new hosts"
+    ipa role-add-privilege "Host Adder" --privilege="Add computers"
+    ipa role-add-member "Host Adder" --user=hadder
+
+}
+
+ipa_keytab_gen() {
+
+    ipa-getkeytab -s `hostname` -p hadder@$REALM -k /root/hadder.keytab
+
+}
+
+trigger_install() {
+
+    alcesbin=/opt/clusterware/bin/alces
+    $alcesbin service install alces-flight-www
+    $alcesbin service install alces-flight-trigger
+
+}
+
+trigger_https() {
+
+    sed -i -e '/.*http_enabled.*/c cw_ALCES_FLIGHT_WWW_http_enabled=false' \
+           -e '/.*http_redirect.*/c cw_ALCES_FLIGHT_WWW_http_redirect_enabled=true' \
+           -e '/.*https_enabled.*/c cw_ALCES_FLIGHT_WWW_https_enabled=true' \
+           -e '/.*https_port.*/c cw_ALCES_FLIGHT_WWW_https_port=8444' \
+           -e '/.*ssl_strategy.*/c cw_ALCES_FLIGHT_WWW_ssl_strategy=selfsigned' \
+           /opt/clusterware/etc/alces-flight-www.rc
+
+}
+
+trigger_enable() {
+
+    $alcesbin service enable alces-flight-www
+    $alcesbin service enable alces-flight-trigger
+    systemctl start clusterware-alces-flight-www
+    systemctl start clusterware-alces-flight-trigger
+
+}
+
+trigger_populate() {
+
+    TRIGGERDIR="/opt/clusterware/var/lib/triggers/directory/triggers"
+    DIRECTORYDIR="/opt/symphony-directory"
+    mkdir -p $TRIGGERDIR
+    for action in add remove
+    do
+        cp $DIRECTORYDIR/bin/cloud/$action $TRIGGERDIR/
+        chmod 0750 $TRIGGERDIR/$action
+    done
+
+}
+
+setup() {
+
+    check_existing
+
+    if [ -f /opt/symphony-directory/etc/config ];
+    then
+        source /opt/symphony-directory/etc/config
+    elif [ ! -f /opt/symphony-directory/etc/config ];
+    then
+        configure
+        source /opt/symphony-directory/etc/config
+    fi
+
+    title 'Preparing system for IPA installation'
+
+    doing 'Preparing host file'
+    setup_prepare_hosts >> /var/log/alces-directory/setup.log 2>&1
+    say_done 0
+
+    doing 'Preparing interface configurations'
+    setup_prepare_resolv >> /var/log/alces-directory/setup.log 2>&1
+    say_done 0
+
+    doing 'Gathering required information'
+    setup_set_info >> /var/log/alces-directory/setup.log 2>&1
+    say_done 0
+
+    title 'Installing dependencies'
+
+    doing 'Installing Haveged'
+    setup_install_haveged >> /var/log/alces-directory/setup.log 2>&1
+    say_done 0
+
+    doing 'Installing IPA tools'
+    setup_install_ipatools >> /var/log/alces-directory/setup.log 2>&1
+    say_done 0
+
+    title 'Configuring directory appliance'
+
+    doing 'Installing IPA server'
+    setup_ipa_install >> /var/log/alces-directory/setup.log 2>&1
+    say_done 0
+
+    doing 'Configuring firewall'
+    setup_configure_firewall >> /var/log/alces-directory/setup.log 2>&1
+    say_done 0
+
+    title 'Configuring IPA server'
+
+    doing 'Generating configuration'
+    ipa_host_config >> /var/log/alces-directory/setup.log 2>&1
+    say_done 0
+
+    doing 'Creating `hostadder` user'
+    ipa_hadder_config >> /var/log/alces-directory/setup.log 2>&1
+    say_done 0
+
+    doing 'Generating keytabs'
+    ipa_keytab_gen >> /var/log/alces-directory/setup.log 2>&1
+    touch /opt/symphony-directory/configured
+    say_done 0
+
+    title 'Installing Alces Flight Trigger'
+
+    doing 'Retrieving required services'
+    trigger_install >> /var/log/alces-directory/setup.log 2>&1
+    say_done 0
+
+    doing 'Enabling HTTPS'
+    trigger_https >> /var/log/alces-directory/setup.log 2>&1
+    say_done 0
+
+    doing 'Enabling Alces Flight Trigger'
+    trigger_enable >> /var/log/alces-directory/setup.log 2>&1
+    say_done 0
+
+    doing 'Setting up Trigger scripts'
+    trigger_populate >> /var/log/alces-directory/setup.log 2>&1
+    say_done 0
+
+    printf "\n------------------------------------------\n"
+    printf "${BOLD}Directory installation complete${NC}\n"
+    printf "  ${PURPLE}hostname:${NC} `hostname -f`\n"
+
+}
+
+if [ "$OPTION" == "user" ];
+then
+    $OPTION $*
+elif [[ -z "$OPTION" ]] || [[ "$OPTION" == "help" ]] || [[ "$OPTION" == "-h" ]] || [[ "$OPTION" == "--help" ]];
+then
+  help
+else
+    $OPTION
+fi

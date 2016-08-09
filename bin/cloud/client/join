@@ -1,4 +1,5 @@
 #!/bin/bash
+
 JQBIN="/opt/clusterware/opt/jq/bin/jq"
 _TRIGGER=/opt/clusterware/libexec/share/flight-trigger
 
@@ -29,7 +30,6 @@ REALM=$(echo $DOMAIN | sed -e 's/\(.*\)/\U\1/')
 ONETIMEPASS=$(openssl rand -hex 6)
 
 function add {
-
 
     ADD=$($_TRIGGER https://$DIRECTORY:8444/trigger/add $CLIENTNAME $CLIENTIP $ONETIMEPASS $CLUSTER |
     $JQBIN '.responses[].result' |
@@ -78,6 +78,7 @@ function enrol_ipa {
         --no-ntp \
         --mkhomedir \
         --force-join \
+        --ssh-trust-dns \
         --realm="$REALM" \
         --server="${DIRECTORYFQDN}" \
         -w "$ONETIMEPASS" \

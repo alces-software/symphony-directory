@@ -1,87 +1,135 @@
 #!/bin/bash
 
-KEYTAB=/root/admin.keytab
-KEYUSER=admin
+keytab=/root/hadder.keytab
+keyuser=hadder
 
-CLIENTNAME=$1
-CLIENTIP=$2
-ONETIMEPASS=$3
-CLUSTER=$4
-DIRECTORYAPPLIANCE=`hostname -f`
-DOMAIN=`hostname -d`
-REALM=$(echo $DOMAIN | sed -e 's/\(.*\)/\U\1/')
+clientname=$1
+clientip=$2
+onetimepass=$3
+cluster=$4
+directoryappliance=`hostname -f`
+domain=`hostname -d`
+realm=$(echo $domain | sed -e 's/\(.*\)/\U\1/')
 
-function check_cluster {
+check_cluster() {
 
-  if [ -z $CLUSTER ];
+  if [ -z $cluster ];
   then
     check_node
   else
-  if [ ! "$(ipa dnszone-find | grep "${CLUSTER}.${DOMAIN}." | awk '{print $3}')" == "${CLUSTER}.${DOMAIN}." ];
+  if [ ! "$(ipa dnszone-find | grep "${cluster}.${domain}." | awk '{print $3}')" == "${cluster}.${domain}." ];
   then
-    add_cluster
-  else
-    check_node
-  fi
-  fi
-
-}
-
-function add_cluster {
-
-  if [ -z $CLUSTER ];
-  then
-    ipa dnszone-add $DOMAIN --name-server $DIRECTORYAPPLIANCE.
-  else
-    ipa dnszone-add $CLUSTER.$DOMAIN --name-server $DIRECTORYAPPLIANCE. > /dev/null 2>&1
-    ipa dnsrecord-add $DOMAIN $CLUSTER --ns-rec=$DIRECTORYAPPLIANCE. > /dev/null 2>&1
-  fi
-
-  check_node
-
-}
-
-function check_node {
-
-  if [ -z $CLUSTER ];
-  then
-    DOMAINRECORDS=$(ipa dnsrecord-find $DOMAIN $CLIENTNAME |
-                    grep "${CLIENTNAME}" |
-                    awk '{print $3}')
-    if [ "$DOMAINRECORDS" == "$CLIENTNAME" ];
+    if [ ! -z $cluster ];
     then
-        ipa host-del $CLIENTNAME.$DOMAIN --updatedns --continue
+        ipa dnszone-add $cluster.$domain --name-server $directoryappliance. >> /dev/null 2>&1
+        ipa dnsrecord-add $domain $cluster --ns-rec=$directoryappliance. >> /dev/null 2>&1
+    fi
+  fi
+  fi
+
+}
+
+check_hostgroup() {
+
+    if [ -z $cluster ];
+    then
+        hostgroupsearch=$(ipa hostgroup-find |
+                          grep "Host-group:" |
+                          grep "${domain}")
+        if [ -z "$hostgroupsearch" ];
+        then
+            ipa hostgroup-add ${domain} \
+                --desc "Host group for ${domain} infrastructure hosts"
+        elif [ ! -z "$hostgroupsearch" ];
+        then
+            if [ "$(ipa hostgroup-show ${domain} | grep "${clientname}.${domain}")" ];
+            then
+                ipa hostgroup-remove-member ${domain} --hosts=${clientname}.${domain}
+            fi
+        fi
+    elif [ ! -z $cluster ];
+    then
+        hostgroupsearch=$(ipa hostgroup-find |
+                          grep "Host-group:" |
+                          grep "${cluster}.${domain}")
+        if [ -z "$hostgroupsearch" ];
+        then
+            ipa hostgroup-add ${cluster}.${domain} \
+                --desc "Host group for ${cluster} cluster hosts"
+        elif [ ! -z "$hostgroupsearch" ];
+        then
+            if [ "$(ipa hostgroup-show ${domain} | grep "${clientname}.${cluster}.${domain}")" ];
+            then
+                ipa hostgroup-remove-member ${cluster}.${domain} --hosts=${clientname}.${domain}
+            fi
+        fi
+    fi
+
+}
+
+check_node() {
+
+  zonefile=/tmp/zones.$$
+  ipa dnszone-find |
+      grep "Zone\ name:" |
+      grep -v "in-addr.arpa" |
+      awk '{print $3}' > $zonefile
+  while read -r line
+  do
+      if [ "$(ipa dnsrecord-find $line | grep $clientip)" ];
+      then
+          echo "FAILED - AN ENTRY WITH $clientip exists"
+          exit 1
+      fi
+  done < "$zonefile"
+  rm -f $zonefile
+  if [ -z $cluster ];
+  then
+    domainrecords=$(ipa dnsrecord-find $domain $clientname |
+                    grep "${clientname}" |
+                    awk '{print $3}')
+    if [ "$domainrecords" == "$clientname" ];
+    then
+        ipa host-del $clientname.$domain --updatedns --continue
     fi
   else
-    DOMAINRECORDS=$(ipa dnsrecord-find $CLUSTER.$DOMAIN $CLIENTNAME |
-                    grep "${CLIENTNAME}" |
+    domainrecords=$(ipa dnsrecord-find $cluster.$domain $clientname |
+                    grep "${clientname}" |
                     awk '{print $3}')
-    if [ "$DOMAINRECORDS" == "$CLIENTNAME" ];
+    if [ "$domainrecords" == "$clientname" ];
     then
-        ipa host-del $CLIENTNAME.$CLUSTER.$REALM --updatedns --continue
+        ipa host-del $clientname.$cluster.$realm --updatedns --continue
     fi
     echo "OK"
-    add_node >> /dev/null
+    add_node >> /dev/null 2>&1
   fi
 
 }
 
-function add_node {
+add_node() {
 
-  if [ -z $CLUSTER ];
-  then
-    ipa host-add $CLIENTNAME.$DOMAIN --ip-address=$CLIENTIP
-    ipa host-mod $CLIENTNAME.$DOMAIN --password="${ONETIMEPASS}"
-    ipa hostgroup-add-member usernodes --hosts $CLIENTNAME.$DOMAIN
-  else
-    ipa host-add $CLIENTNAME.$CLUSTER.$DOMAIN --ip-address=$CLIENTIP
-    ipa host-mod $CLIENTNAME.$CLUSTER.$DOMAIN --password="${ONETIMEPASS}"
-    ipa hostgroup-add-member usernodes --hosts $CLIENTNAME.$CLUSTER.$DOMAIN
-  fi
+    if [ -z $cluster ];
+    then
+        ipa host-add $clientname.$domain --ip-address=$clientip
+        ipa host-mod $clientname.$domain --password="${onetimepass}"
+        ipa hostgroup-add-member usernodes --hosts $clientname.$domain
+        curl -s -H "Content-Type: application/json" \
+             -X POST http://127.0.0.1:12345/register \
+             -d '{"name":"'$clientname'","domain":"'$domain'","ip":"'$clientip'"}'
+    elif [ ! -z $cluster ];
+    then
+        ipa host-add $clientname.$cluster.$domain --ip-address=$clientip
+        ipa host-mod $clientname.$cluster.$domain --password="${onetimepass}"
+        ipa hostgroup-add-member usernodes --hosts $clientname.$cluster.$domain
+        curl -s -H "Content-Type: application/json" \
+             -X POST http://127.0.0.1:12345/register \
+             -d '{"name":"'$clientname'","domain":"'$domain'","cluster":"'$cluster'","ip":"'$clientip'"}'
+    fi
+    echo "OK"
 
 }
 
-if [[ -z $CLIENTNAME || -z $CLIENTIP || -z $ONETIMEPASS ]];
+if [[ -z $clientname || -z $clientip || -z $onetimepass ]];
 then
 
   echo "One or more parameters not provided"
@@ -89,8 +137,8 @@ then
 
 else
 
-  kinit -kt $KEYTAB $KEYUSER
+  kinit -kt $keytab $keyuser
   check_cluster
-  kdestroy
+  check_node
 
 fi
