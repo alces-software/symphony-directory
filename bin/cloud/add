@@ -1,6 +1,6 @@
 #!/bin/bash
 
-keytab=/root/hadder.keytab
+keytab=/opt/symphony-directory/etc/hadder.keytab
 keyuser=hadder
 
 clientname=$1

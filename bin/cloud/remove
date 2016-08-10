@@ -3,7 +3,7 @@
 clientname=$1
 cluster=$2
 
-keytab=/root/hadder.keytab
+keytab=/opt/symphony-directory/etc/hadder.keytab
 keyuser=hadder
 domain=$(hostname -d)
 realm=$(echo `hostname -d` | sed -e 's/\(.*\)/\U\1/')

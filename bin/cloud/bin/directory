@@ -146,7 +146,7 @@ configure() {
 
 authenticate() {
 
-    kinit -kt /root/admin.keytab admin
+    kinit -kt /opt/symphony/directory/etc/umanager.keytab umanager
 
 }
 
@@ -366,6 +366,9 @@ ipa_hadder_config() {
     ipa privilege-add-permission "Add computers" --permissions="System: Modify Hosts"
     ipa privilege-add-permission "Add computers" --permissions="System: Manage Host Enrollment Password"
     ipa privilege-add-permission "Add computers" --permissions="System: Manage Host Keytab"
+    ipa privilege-add-permission "Add computers" --permissions="System: Read Hostgroups"
+    ipa privilege-add-permission "Add computers" --permissions="System: Add Hostgroups"
+    ipa privilege-add-permission "Add computers" --permissions="System: Read Hostgroup Membership"
     ipa privilege-add-permission "Add computers" --permissions="System: Modify Hostgroup Membership"
     ipa privilege-add-permission "Add computers" --permissions="System: Remove Hosts"
     ipa privilege-add-permission "Add computers" --permissions="System: Remove DNS Entries"
@@ -376,9 +379,17 @@ ipa_hadder_config() {
 
 }
 
+user_manager_config() {
+
+    ipa user-add --first=User --last=Manager umanager
+    ipa role-add-member "User Administrator" --user=umanager
+
+}
+
 ipa_keytab_gen() {
 
-    ipa-getkeytab -s `hostname` -p hadder@$REALM -k /root/hadder.keytab
+    ipa-getkeytab -s `hostname` -p hadder@$REALM -k /opt/symphony-directory/etc/hadder.keytab
+    ipa getkeytab -s `hostname` -p umanager@$REALM -k /opt/symphony-directory/etc/umanager.keytab
 
 }
 
