@@ -389,7 +389,7 @@ user_manager_config() {
 ipa_keytab_gen() {
 
     ipa-getkeytab -s `hostname` -p hadder@$REALM -k /opt/symphony-directory/etc/hadder.keytab
-    ipa getkeytab -s `hostname` -p umanager@$REALM -k /opt/symphony-directory/etc/umanager.keytab
+    ipa-getkeytab -s `hostname` -p umanager@$REALM -k /opt/symphony-directory/etc/umanager.keytab
 
 }
 
@@ -489,6 +489,10 @@ setup() {
 
     doing 'Creating `hostadder` user'
     ipa_hadder_config >> /var/log/alces-directory/setup.log 2>&1
+    say_done 0
+
+    doing 'Creating `umanager` user'
+    user_manager_config >> /var/log/alces-directory/setup.log 2>&1
     say_done 0
 
     doing 'Generating keytabs'
