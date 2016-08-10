@@ -146,7 +146,7 @@ configure() {
 
 authenticate() {
 
-    kinit -kt /opt/symphony/directory/etc/umanager.keytab umanager
+    kinit -kt /opt/symphony-directory/etc/umanager.keytab umanager
 
 }
 
