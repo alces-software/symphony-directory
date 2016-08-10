@@ -1,102 +1,175 @@
-# How to launch an infrastructure stack with directory/subclusters
+# How to launch an infrastructure stack with directory server and connected clusters
 
 Steps to create the following environment: 
 
 * Infrastructure stack, containing the site-wide `prv` network and `directory` instance
 * One or more clusters, sitting on both the site-wide `prv` network and their own internal `api` network
-* Optionally deploy example appliances into the site domains network for interaction with all deployed clusters
 
 ## OpenStack
 
-### Setting up the infrastructure
+### Creating appliance images
 
-* Using the Alces Demo OpenStack - navigate to the Heat dashboard
-* Create a new Heat stack using the following template: 
-  `https://raw.githubusercontent.com/alces-software/bumblebee/master/heat/infrastructure.yaml`
-* Important things to note when filling in the Heat parameters:
-  * The stack name should be filled in as your site domain name, for example `tatooine` - which would then set the IPA REALM as `tatooine.alces.cluster`
-  * Select the correct image, or nothing will work! The `bumblebee-develop` image should be used. 
-* Launch the Heat stack
-* Once the stack has finished creating - the floating IP of the directory server will be displayed. Log in to the directory server as the `alces` user and switch to the root account
-* Run the directory set up script: 
+#### Building the `directory` appliance image
+
+* From an Alces build machine, clone the `imageware` repository and check out the `static` branch.
+
+* Ensure an existing image does not exist for the version you are attempting to create, these will live in `/opt/vm/imagebuilder-release/centos7-directory*`
+
+* Run the image builder: 
 
 ```bash
-curl -sL https://git.io/vKFGI | /bin/bash
+cd $imagewarecheckout/support/openstack
+./makeimage directory 1.0.0 # replace with your desired version
 ```
 
-* Once the set up has finished - continue to creating a cluster
-
-### Setting up a cluster
-
-* Using the Alces Demo OpenStack - navigate to the Heat dashboard
-* Create a new Heat stack using the following template:
-  `https://raw.githubusercontent.com/alces-software/bumblebee/master/heat/cluster.yaml`
-* Launch the Heat stack
-* Important things to note when filling in the Heat parameters:
-  * The stack name should be filled in as your desired cluster name, for example `jabbas-palace` - which would then set your domain as `jabbas-palace.tatooine.alces.cluster`
-  * The environment domain field should contain the name of your infrastructure Heat template name, e.g. `tatooine`
-  * Select the correct image - the `clusterware-static` image should be used. 
-  * Select the correct network to join, for example `$DOMAIN-prv`
-  * S3 region: `eu-west-1`, Alces Customizer Bucket: `s3://alces-flight-nmi0ztdmyzm3ztm3`, Alces Customizer Profiles: `default`
-  * Enter example values in the S3 key fields
-* Once the stack has finished creating - the floating IP of the login node will be displayed. 
-* To remove a node from IPA and unenrol the IPA client, run the following. If the node is the last entry in a cluster, the cluster will also be removed.
+* Once finished, copy the created image to the Alces demo OpenStack - then SSH to the demo OpenStack login node to upload the newly created image to Glance:
 
 ```bash
-curl -sL https://git.io/vKFZi | /bin/bash
+scp -i $HOME/.ssh/id_julius \
+    /opt/vm/imagebuilder-release/centos7-directory-1.0.0.qcow2 \
+    alces-cluster@10.101.0.36:/users/alces-cluster/
+ssh -i $HOME/.ssh/id_julius alces-cluster@10.101.0.36
 ```
+
+* Authenticate to OpenStack, then upload the image to Glance
+
+```bash
+. $HOME/primary_rc.sh
+glance image-create \
+       --container-format bare \
+       --disk-format qcow2 \
+       --min-disk 1
+       --file centos7-directory-1.0.0.qcow2 \
+       --name directory-1.0.0 \
+       --progress \
+       --human-readable \
+       --is-public true
+```
+
+#### Building the compute node image
+
+Repeat the steps for the `directory` appliance - but instead build the `clusterware-static` appliance type, for example: 
+
+```bash
+./makeimage clusterware-static 1.0.0
+```
+
+### Creating environments
+
+#### Setting up the infrastructure/directory
+
+##### Deploying the environment stack
+
+* Connect to the Alces OpenStack demo VPN - then from the Alces demo OpenStack Horizon dashboard - navigate to the Heat stack creation console
+
+* Create a new stack using the `infrastructure.yaml` file located in the `bumblebee` repository: 
+
+    `https://raw.githubusercontent.com/alces-software/bumblebee/master/heat/infrastructure.yaml`
+
+* Fill in the form with the following details: 
+
+    **Stack Name**: This sets the domain, for example a stack name `tatooine` would define the IPA realm `tatooine.alces.cluster`
+    **Creation Timeout**: Leave default `60`
+    **Rollback On Failure**: `true`
+    **Password for user "(your user)"**: Enter the OpenStack password for your OpenStack user
+    **Cluster admin key**: Select your desired keypair, this is used to access the `directory` instance as the `alces` user
+    **Bumblebee Image**: Select the previously uploaded `directory` appliance image - for example `directory-1.0.0`
+    **Directory instance flavour**: Select a flavour to use for the directory instance
+
+* Once all of the required fields are filled in - launch the stack and wait for completion
+
+###### Performing initial setup
+
+* Use the displayed floating IP address to SSH as the `alces` user with your previously selected key
+
+* Switch to the `root` user
+
+* Run `directory setup` to begin configuration - this will prompt you for an IPA administrator password and Alces Flight Trigger authentication password. Press enter to use the default generated passwords for each service.
+
+* Once the configuration has completed - additional utilities are available such as adding a user
+
+* Add a user to log in to each deployed cluster as, along with an SSH key: 
+
+```bash
+directory user add -f luke -l skywalker -u lskywalker -s AAAAB3NzaC1yc2EAAAADAQABAAABAQDCBMcZdI/1SLOaHhGH0dbfZh7YZwWHNN779oA9JKfk0QWHqTqY78x/0B1Q8lRBBrkFYMU1c9fsF0vYlVBAEvVWGZL24i/l/C1Bnu82O8NdUE/lxUzuu4xD6HTYoVJzFwpLWGkuqjJmzijQ2phYcvavUhJkvcI9fU9cig4PqcOTGDNG0lin7YGkdqZiRB6k+82WdTcegiLMnHVG/SC0VoIMf6eElpceviBZieEAsLX2DoADmYu7PO2SSI3QaKDtSodt5nEeGfs/Q0/91vml9B95R0Jb6tm1YGnt51JD2C7FmPCBxdClGWthhdYj/MfFkX0DVAA5UygDCJ0rGdMdGus1
+```
+
+* *Note*: The SSH key will only accept the middle part of the key (currently), so do not include the beginning `ssh-rsa` or end name of the public key - just the actual key
+
+#### Deploying a cluster
+
+* Connect to the Alces OpenStack demo VPN - then from the Alces demo OpenStack Horizon dashboard - navigate to the Heat stack creation console
+
+* Create a new stack using the `cluster.yaml` file located in the `bumblebee` repository:
+
+    `https://raw.githubusercontent.com/alces-software/bumblebee/master/heat/cluster.yaml`
+
+* Fill in the form with the following details:
+
+    **Stack Name**: This sets the cluster name, enter your desired cluster name
+    **Creation Timeout**: Leave default `60`
+    **Rollback On Failure**: `true`
+    **Password for user "(your user)"**: Enter the OpenStack password for your OpenStack user
+    **Cluster admin key**: Select your desired keypair, this is used to access the cluster as the `alces` administrator user
+    **Bumblebee Image**: Select your previously uploaded `clusterware-static` appliance image - for example `clusterware-static-1.0.0`
+    **Compute node instance type**: Select a flavour to use for all nodes within a cluster
+    **Alces Customizer profiles**: Enter `node`
+    **Environment domain**: Enter the infrastructure stack name, for example `tatooine`. This would set your cluster domain as `jabbas-palace.tatooine.alces.cluster`
+    **Private network**: Select the private network created by your infrastructure stack, for example `tatooine-prv`. The network will always be marked `$domain-prv`
+    **S3 Access Key**: Enter your AWS S3 Access Key for use with the Alces Customizer tool
+    **S3 Region**: Enter `eu-west-1`
+    **S3 Secret Key**: Enter your AWS S3 Secret Access Key for use with the Alces Customizer tool
+    **Alces Customizer S3 bucket**: Enter `s3://alces-flight-nmi0ztdmyzm3ztm3`
+
+* Once all of the required fields are filled in - launch the stack and wait for completion
+
+* Once the nodes begin booting, they will automatically join the IPA realm. You can check the status by running the following command on the `directory` appliance: 
+
+```bash
+ipa dnsrecord-find <clustername>.<domain>.alces.cluster
+```
+
+* Once the login node has joined (this can take up to a few minutes) - you can SSH in as your previously created user, together with the key you provided for that user.
+
+* *Note*: as there are no shared home directories, unless you manually upload your private key to the login node for the created user - you will not be able to SSH between nodes
 
 ## AWS
 
-### Setting up the infrastructure
+### Creating appliance images
 
-* Navigate to the CloudFormation console
-* Create a new stack using the following template:
-  `https://raw.githubusercontent.com/alces-software/bumblebee/master/cloudformation/infrastructure.json`
-* Important things to note when filling in the CloudFormation parameters:
-  * The stack name should be filled in as your site domain name, for example `tatooine` - which would then set the IPA REALM as `tatooine.alces.cluster`
-* Launch the CloudFormation stack
-* Once the stack has finished creating - the floating IP of the directory server will be displayed. Log in to the directory server as the `alces` user and switch to the root account
-* Run the directory set up script: 
+#### Building the `directory` appliance image
+
+* Clone the `imageware` repository to your desired location
+
+* Run the AMI creator: 
 
 ```bash
-curl -sL https://git.io/vKFGI | /bin/bash
+cd $imagewarecheckout/support/aws
+./ami-creator -k <your aws keypair> -b develop -i static -t directory
 ```
 
-* Once the set up has finished - continue to creating a cluster
+* Once finished - make note of the AMI ID displayed
 
-### Setting up a cluster
+* Using the infrastructure CloudFormation template as a base - replace the existing AMI ID in the `eu-west-1` region with your newly created AMI ID. The base template can be found in the `bumblebee` repository at: 
 
-* Navigate to the CloudFormation console
-* Create a new stack using the following template:
-  `https://raw.githubusercontent.com/alces-software/bumblebee/master/cloudformation/cluster.json`
-* Important things to note when filling in the CloudFormation parameters:
-  * The stack name should be filled in as your desired cluster name, for example `jabbas-palace` - which would then set your domain as `jabbas-palace.tatooine.alces.cluster`
-  * In the customization profile box, enter `node` - this will trigger the `join` script when each node boots - automatically adding it to the IPA realm
-  * The environment domain field should contain the name of your infrastructure Heat template name, e.g. `tatooine`
-  * Select the correct VPC, for example `$DOMAIN-vpc`
-  * Select the correct subnet, for example `$DOMAIN-prv`
-* Launch the CloudFormation stack
-* When the cluster is ready - the public IP address of the login node will be displayed
-* To remove a node from IPA and unenrol the IPA client, run the following. If the node is the last entry in a cluster, the cluster will also be removed.
+    `https://raw.githubusercontent.com/alces-software/bumblebee/master/cloudformation/infrastructure.json`
+
+#### Building the compute node image
+
+Repeat the steps for the `directory` appliance - but instead use the `clusterware-static` appliance type, for example:
 
 ```bash
-curl -sL https://git.io/vKFZi | /bin/bash
+./ami-creator -k <your aws keypair> -b develop -i static -t clusterware-static
 ```
 
-## Issues
+### Creating environments
 
-### General
+#### Setting up the infrastructure/directory
 
-* The ClusterWare SSH key does not seem to work when attempting to SSH between hosts. Each node will have the ClusterWare generated key in its authorised keys, but will not accept the key
-* Currently, nodes have no way of performing their `leave` script - this has to be done manually either from the directory server or from the node itself
-* There is a race condition between Bumblebee performing its configuration and Clusterware starting the customisation process. If Bumblebee hasn't quite finished configuring, the IPA join script will break as `/etc/hosts` hasn't yet been configured properly. This could be solved by editing the ClusterWare configurator systemd file to start after bumblebee-configurator 
+##### Deploying the environment stack
 
-### AWS
+##### Performing initial setup
 
-* Without manually modifying the `cluster` template each time - only 1 cluster can be created as the cluster internal `api` network has to live on a subnet within the VPC, meaning multiple subnets with the same subnet cannot be created
-* As the directory server is not any of the available ClusterWare roles - the customizer won't work, hence having to log in manually and run the set up script
+#### Deploying a cluster
 
-### OpenStack
 
-* At present - the customizer tool isn't working with OpenStack, so manual configuration is required using the provided scripts. The directory server is automatically set up and configured to work with the client side scripts
