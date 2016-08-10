@@ -78,7 +78,7 @@ check_node() {
   do
       if [ "$(ipa dnsrecord-find $line | grep $clientip)" ];
       then
-          echo "FAILED - AN ENTRY WITH $clientip exists"
+          echo "FAILED - AN ENTRY WITH $clientip EXISTS"
           exit 1
       fi
   done < "$zonefile"
@@ -113,17 +113,11 @@ add_node() {
         ipa host-add $clientname.$domain --ip-address=$clientip
         ipa host-mod $clientname.$domain --password="${onetimepass}"
         ipa hostgroup-add-member usernodes --hosts $clientname.$domain
-        curl -s -H "Content-Type: application/json" \
-             -X POST http://127.0.0.1:12345/register \
-             -d '{"name":"'$clientname'","domain":"'$domain'","ip":"'$clientip'"}'
     elif [ ! -z $cluster ];
     then
         ipa host-add $clientname.$cluster.$domain --ip-address=$clientip
         ipa host-mod $clientname.$cluster.$domain --password="${onetimepass}"
         ipa hostgroup-add-member usernodes --hosts $clientname.$cluster.$domain
-        curl -s -H "Content-Type: application/json" \
-             -X POST http://127.0.0.1:12345/register \
-             -d '{"name":"'$clientname'","domain":"'$domain'","cluster":"'$cluster'","ip":"'$clientip'"}'
     fi
     echo "OK"
 
