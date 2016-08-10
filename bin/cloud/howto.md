@@ -58,7 +58,7 @@ Repeat the steps for the `directory` appliance - but instead build the `clusterw
 
 #### Setting up the infrastructure/directory
 
-##### Deploying the environment stack
+##### Deploying the infrastructure stack
 
 * Connect to the Alces OpenStack demo VPN - then from the Alces demo OpenStack Horizon dashboard - navigate to the Heat stack creation console
 
@@ -166,10 +166,68 @@ Repeat the steps for the `directory` appliance - but instead use the `clusterwar
 
 #### Setting up the infrastructure/directory
 
-##### Deploying the environment stack
+##### Deploying the infrastructure stack
+
+* Navigate to the CloudFormation console in the `eu-west-1` region
+
+* Create a stack using your modified `infrastructure` template
+
+* Fill in the CloudFormation parameters:
+
+    **Stack name**: This sets the domain, for example a stack name `tatooine` would define the IPA realm `tatooine.alces.cluster`
+    **DirectoryType**: Select the type of directory instance to deploy
+    **FlightCustomBucket**: Leave blank
+    **FlightCustomProfiles**: Leave blank
+    **KeyPair**: Select your AWS key pair, this is used to access the instance as the `alces` administrator user
+    **LoginSystemDiskSize**: Enter the size in GB of the root volume on the directory instance to deploy
+    **NetworkCIDR**: Enter a CIDR that is permitted to access the directory instance
+
+* Once all of the required fields are filled in - launch the stack and wait for completion
 
 ##### Performing initial setup
 
+* Use the displayed floating IP address to SSH as the `alces`  user with your previously selected key
+
+* Switch to the `root` user
+
+* Run `directory setup` to begin configuration - this will prompt you for an IPA administrator password and Alces Flight Trigger authentication password. Press enter to use the default generated passwords for each service.
+
+* Once the configuration has completed - additional utilities are available such as adding a user
+
+* Add a user to log in to each deployed cluster as, along with an SSH key: 
+
+```bash
+directory user add -f luke -l skywalker -u lskywalker -s AAAAB3NzaC1yc2EAAAADAQABAAABAQDCBMcZdI/1SLOaHhGH0dbfZh7YZwWHNN779oA9JKfk0QWHqTqY78x/0B1Q8lRBBrkFYMU1c9fsF0vYlVBAEvVWGZL24i/l/C1Bnu82O8NdUE/lxUzuu4xD6HTYoVJzFwpLWGkuqjJmzijQ2phYcvavUhJkvcI9fU9cig4PqcOTGDNG0lin7YGkdqZiRB6k+82WdTcegiLMnHVG/SC0VoIMf6eElpceviBZieEAsLX2DoADmYu7PO2SSI3QaKDtSodt5nEeGfs/Q0/91vml9B95R0Jb6tm1YGnt51JD2C7FmPCBxdClGWthhdYj/MfFkX0DVAA5UygDCJ0rGdMdGus1
+```
+
+* *Note*: The SSH key will only accept the middle part of the key (currently), so do not include the beginning `ssh-rsa` or end name of the public key - just the actual key
+
 #### Deploying a cluster
 
+* Navigate to the CloudFormation console in the `eu-west-1` region
 
+* Create a new stack using your modified `cluster` template
+
+* Fill in the CloudFormation parameters:
+
+    **Stack name**: This sets the cluster name, enter your desired cluster name
+    **ClusterDomain**: Enter the infrastructure stack name, for example `tatooine`. This would set your cluster domain as `jabbas-palace.tatooine.alces.cluster`
+    **ComputeType**: Select the compute instance type to use for all deployed instances
+    **FlightCustomBucket**: Leave blank
+    **FlightCustomProfiles**: Enter `node`
+    **KeyPair**: Select a key pair to assign to the instance
+    **NetworkCIDR**: Enter a CIDR that is permitted to access each of the deployed instances
+    **PrivateVPC**: Select the VPC created by your infrastructure stack, for example `tatooine`
+    **PrvSubnet**: Select the private network subnet created by your infrastructure stack, for example `tatooine-prv`
+
+* Once all of the required fields are filled in - launch the stack and wait for completion
+
+* Once the nodes begin booting, they will automatically join the IPA realm. You can check the status by running the following command on the `directory` appliance:
+
+```bash
+ipa dnsrecord-find <clustername>.<domain>.alces.cluster
+```
+
+* Once the login node has joined (this can take up to a few minutes) - you can SSH in as your previously created user, together with the key you provided for that user.
+
+* *Note*: as there are no shared home directories, unless you manually upload your private key to the login node for the created user - you will not be able to SSH between nodes
