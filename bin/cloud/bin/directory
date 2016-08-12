@@ -416,7 +416,7 @@ trigger_enable() {
 
     $alcesbin service enable alces-flight-www
     $alcesbin service enable alces-flight-trigger
-    echo "alces:${TRIGGERPASSWORD}" >> /opt/clusterware/var/lib/triggers/.credentials
+    echo "alces:${TRIGGERPASSWORD}" > /opt/clusterware/var/lib/triggers/.credentials
     systemctl start clusterware-alces-flight-www
     systemctl start clusterware-alces-flight-trigger
 
