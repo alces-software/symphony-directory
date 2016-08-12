@@ -409,7 +409,6 @@ trigger_https() {
            -e '/.*https_port.*/c cw_ALCES_FLIGHT_WWW_https_port=8444' \
            -e '/.*ssl_strategy.*/c cw_ALCES_FLIGHT_WWW_ssl_strategy=selfsigned' \
            /opt/clusterware/etc/alces-flight-www.rc
-    echo "alces:${TRIGGERPASSWORD}" >> /opt/clusterware/var/lib/triggers/.credentials
 
 }
 
@@ -417,6 +416,7 @@ trigger_enable() {
 
     $alcesbin service enable alces-flight-www
     $alcesbin service enable alces-flight-trigger
+    echo "alces:${TRIGGERPASSWORD}" >> /opt/clusterware/var/lib/triggers/.credentials
     systemctl start clusterware-alces-flight-www
     systemctl start clusterware-alces-flight-trigger
 
