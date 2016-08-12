@@ -534,6 +534,12 @@ setup() {
     trigger_populate >> /var/log/alces-directory/setup.log 2>&1
     say_done 0
 
+    title 'Finishing configuration'
+
+    doing 'Pushing configuration to S3'
+    push_config >> /var/log/alces-directory/setup.log 2>&1
+    say_done 0
+
     printf "\n------------------------------------------\n"
     printf "${BOLD}Directory installation complete${NC}\n"
     printf "  ${PURPLE}hostname:${NC} `hostname -f`\n"
