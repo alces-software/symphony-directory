@@ -409,6 +409,7 @@ trigger_https() {
            -e '/.*https_port.*/c cw_ALCES_FLIGHT_WWW_https_port=8444' \
            -e '/.*ssl_strategy.*/c cw_ALCES_FLIGHT_WWW_ssl_strategy=selfsigned' \
            /opt/clusterware/etc/alces-flight-www.rc
+    echo "alces:${TRIGGERPASSWORD}" >> /opt/clusterware/var/lib/triggers/.credentials
 
 }
 
@@ -431,6 +432,21 @@ trigger_populate() {
         cp $DIRECTORYDIR/bin/cloud/$action $TRIGGERDIR/
         chmod 0750 $TRIGGERDIR/$action
     done
+
+}
+
+push_config() {
+
+    _s3cmd=/opt/clusterware/opt/s3cmd/s3cmd
+    source /opt/clusterware/etc/cluster-customizer.rc
+    echo "DIRECTORY=`hostname -i`" >> $DIRECTORYDIR/etc/node_config
+    echo "cw_FLIGHT_TRIGGER_auth=alces:$TRIGGERPASSWORD" >> $DIRECTORYDIR/etc/node_config
+    chmod 0640 $DIRECTORYDIR/etc/node_config
+    $_s3cmd --access_key=${cw_CLUSTER_CUSTOMIZER_access_key_id} \
+            --secret_key=${cw_CLUSTER_CUSTOMIZER_secret_access_key} \
+            --region=${cw_CLUSTER_CUSTOMIZER_region} \
+            put $DIRECTORYDIR/etc/node_config \
+            ${cw_CLUSTER_CUSTOMIZER_bucket}/directory/${REALM}/node_config
 
 }
 

@@ -3,17 +3,6 @@
 JQBIN="/opt/clusterware/opt/jq/bin/jq"
 _TRIGGER=/opt/clusterware/libexec/share/flight-trigger
 
-if [ -z $DIRECTORY ];
-then
-    DIRECTORY="10.75.0.254"
-fi
-
-if [ -z $TRIGGERPASSWORD ];
-then
-    TRIGGERPASSWORD="password"
-    export cw_FLIGHT_TRIGGER_auth=alces:$TRIGGERPASSWORD
-fi
-
 CLIENTNAME=`hostname -s`
 CLIENTIP=`hostname -i`
 DOMAIN=$(hostname -d | grep -o "\." | wc -l)
@@ -29,7 +18,25 @@ DIRECTORYFQDN="directory.$DOMAIN"
 REALM=$(echo $DOMAIN | sed -e 's/\(.*\)/\U\1/')
 ONETIMEPASS=$(openssl rand -hex 6)
 
-function add {
+pull_config() {
+
+    _s3bin=/opt/clusterware/opt/s3cmd/s3cmd
+    source /opt/clusterware/etc/cluster-customizer.rc
+    node_config_dir=/opt/symphony-directory/etc
+    mkdir -p $node_config_dir
+    node_config="${node_config_dir}/node_config"
+    $_s3bin --access_key=${cw_CLUSTER_CUSTOMIZER_access_key_id} \
+            --secret_key=${cw_CLUSTER_CUSTOMIZER_secret_access_key} \
+            --region=${cw_CLUSTER_CUSTOMIZER_region} \
+            get ${cw_CLUSTER_CUSTOMIZER_bucket}/directory/${REALM}/node_config \
+            ${node_config}
+    chmod 0640 ${node_config}
+    source ${node_config}
+    export cw_FLIGHT_TRIGGER_auth=$cw_FLIGHT_TRIGGER_auth
+
+}
+
+add() {
 
     ADD=$($_TRIGGER https://$DIRECTORY:8444/trigger/add $CLIENTNAME $CLIENTIP $ONETIMEPASS $CLUSTER |
     $JQBIN '.responses[].result' |
@@ -87,4 +94,5 @@ function enrol_ipa {
 
 }
 
+pull_config
 add
