@@ -69,21 +69,6 @@ check_hostgroup() {
 
 check_node() {
 
-  zonefile=/tmp/zones.$$
-  ipa dnszone-find |
-      grep "Zone\ name:" |
-      grep -v "in-addr.arpa" |
-      grep -v "${cluster}.${domain}" |
-      awk '{print $3}' > $zonefile
-  while read -r line
-  do
-      if [ "$(ipa dnsrecord-find $line | grep $clientip)" ];
-      then
-          echo "FAILED - AN ENTRY WITH $clientip EXISTS"
-          exit 1
-      fi
-  done < "$zonefile"
-  rm -f $zonefile
   if [ -z $cluster ];
   then
     domainrecords=$(ipa dnsrecord-find $domain $clientname |
