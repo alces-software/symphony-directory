@@ -69,26 +69,25 @@ check_hostgroup() {
 
 check_node() {
 
-  if [ -z $cluster ];
-  then
-    domainrecords=$(ipa dnsrecord-find $domain $clientname |
-                    grep "${clientname}" |
-                    awk '{print $3}')
-    if [ "$domainrecords" == "$clientname" ];
-    then
-        ipa host-del $clientname.$domain --updatedns --continue >> /dev/null 2>&1
+  zonefile="/opt/symphony-directory/etc/zones"
+  ipa dnszone-find |
+      grep "Zone\ name:" |
+      grep -v "${cluster}.${domain}" |
+      awk '{print $3}' > $zonefile
+  while read -r dns_zone; do
+    if [ "$(ipa dnsrecord-find $dns_zone | grep $clientip)" ]; then
+      domainrecords=$(ipa dnsrecord-find $dns_zone $clientname |
+                          grep "${clientname}" |
+                          awk '{print $3}')
+      if [ "${domainrecords}" == "${clientname}" ]; then
+        ipa host-del $clientname.$dns_zone \
+            --update-dns --continue \
+            >> /dev/null 2>&1
+      fi
     fi
-  else
-    domainrecords=$(ipa dnsrecord-find $cluster.$domain $clientname |
-                    grep "${clientname}" |
-                    awk '{print $3}')
-    if [ "$domainrecords" == "$clientname" ];
-    then
-        ipa host-del $clientname.$cluster.$realm --updatedns --continue
-    fi
-    echo "OK"
-    add_node >> /dev/null 2>&1
-  fi
+  done < "$zonefile"
+  echo "OK"
+  add_node >> /dev/null 2>&1
 
 }
 
