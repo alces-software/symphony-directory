@@ -29,41 +29,19 @@ check_cluster() {
 
 }
 
-check_hostgroup() {
+cluster_hostgroup() {
 
-    if [ -z $cluster ];
-    then
-        hostgroupsearch=$(ipa hostgroup-find |
-                          grep "Host-group:" |
-                          grep "${domain}")
-        if [ -z "$hostgroupsearch" ];
-        then
-            ipa hostgroup-add ${domain} \
-                --desc "Host group for ${domain} infrastructure hosts"
-        elif [ ! -z "$hostgroupsearch" ];
-        then
-            if [ "$(ipa hostgroup-show ${domain} | grep "${clientname}.${domain}")" ];
-            then
-                ipa hostgroup-remove-member ${domain} --hosts=${clientname}.${domain}
-            fi
-        fi
-    elif [ ! -z $cluster ];
-    then
-        hostgroupsearch=$(ipa hostgroup-find |
-                          grep "Host-group:" |
-                          grep "${cluster}.${domain}")
-        if [ -z "$hostgroupsearch" ];
-        then
-            ipa hostgroup-add ${cluster}.${domain} \
-                --desc "Host group for ${cluster} cluster hosts"
-        elif [ ! -z "$hostgroupsearch" ];
-        then
-            if [ "$(ipa hostgroup-show ${domain} | grep "${clientname}.${cluster}.${domain}")" ];
-            then
-                ipa hostgroup-remove-member ${cluster}.${domain} --hosts=${clientname}.${domain}
-            fi
-        fi
+  if [ -z $cluster ]; then
+    if [ ! "$(ipa hostgroup-find | grep "Host-group" | grep "${domain}")" ]; then
+      ipa hostgroup-add ${domain} \
+          --desc "Host group for ${domain} infrastructure hosts"
     fi
+  elif [ ! -z $cluster ]; then
+    if [ ! "$(ipa hostgroup-find | grep "Host-group" | grep "${cluster}")" ]; then
+      ipa hostgroup-add ${cluster}.${domain} \
+          --desc "Host group for ${cluster} cluster hosts"
+    fi
+  fi
 
 }
 
@@ -87,6 +65,7 @@ check_node() {
     fi
   done < "$zonefile"
   echo "OK"
+  cluster_hostgroup >> /dev/null 2>&1
   add_node >> /dev/null 2>&1
 
 }
@@ -97,11 +76,13 @@ add_node() {
     then
         ipa host-add $clientname.$domain --ip-address=$clientip
         ipa host-mod $clientname.$domain --password="${onetimepass}"
+        ipa hostgroup-add-member ${domain} --hosts $clientname.$domain
         ipa hostgroup-add-member usernodes --hosts $clientname.$domain
     elif [ ! -z $cluster ];
     then
         ipa host-add $clientname.$cluster.$domain --ip-address=$clientip
         ipa host-mod $clientname.$cluster.$domain --password="${onetimepass}"
+        ipa hostgroup-add-member ${cluster} --hosts $clientname.$cluster.$domain
         ipa hostgroup-add-member usernodes --hosts $clientname.$cluster.$domain
     fi
     echo "OK"
