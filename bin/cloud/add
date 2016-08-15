@@ -73,6 +73,7 @@ check_node() {
   ipa dnszone-find |
       grep "Zone\ name:" |
       grep -v "in-addr.arpa" |
+      grep -v "${cluster}.${domain}" |
       awk '{print $3}' > $zonefile
   while read -r line
   do
