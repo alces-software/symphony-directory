@@ -91,7 +91,7 @@ check_node() {
                     awk '{print $3}')
     if [ "$domainrecords" == "$clientname" ];
     then
-        ipa host-del $clientname.$domain --updatedns --continue
+        ipa host-del $clientname.$domain --updatedns --continue >> /dev/null 2>&1
     fi
   else
     domainrecords=$(ipa dnsrecord-find $cluster.$domain $clientname |
