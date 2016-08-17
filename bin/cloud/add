@@ -13,18 +13,22 @@ realm=$(echo $domain | sed -e 's/\(.*\)/\U\1/')
 
 check_cluster() {
 
-  if [ -z $cluster ];
-  then
+  if [ -z $cluster ]; then
+    fqdn="${clientname}.${domain}"
+    cluster_domain="${domain}"
     check_node
-  else
-  if [ ! "$(ipa dnszone-find | grep "${cluster}.${domain}." | awk '{print $3}')" == "${cluster}.${domain}." ];
-  then
-    if [ ! -z $cluster ];
-    then
-        ipa dnszone-add $cluster.$domain --name-server $directoryappliance. >> /dev/null 2>&1
-        ipa dnsrecord-add $domain $cluster --ns-rec=$directoryappliance. >> /dev/null 2>&1
+  elif [ ! -z $cluster ]; then
+    fqdn="${clientname}.${cluster}.${domain}"
+    cluster_domain="${cluster}.${domain}"
+    if [ ! "$(ipa dnszone-find | grep "${cluster_domain}." | awk '{print $3}')" ]; then
+      ipa dnszone-add ${cluster_domain} \
+          --name-server ${directoryappliance}. \
+          >> /dev/null 2>&1
+      ipa dnsrecord-add ${domain} ${cluster} \
+          --ns-rec=${directoryappliance}. \
+          >> /dev/null 2>&1
+      check_node
     fi
-  fi
   fi
 
 }
@@ -50,16 +54,16 @@ check_node() {
   zonefile="/opt/symphony-directory/etc/zones"
   ipa dnszone-find |
       grep "Zone\ name:" |
-      grep -v "${cluster}.${domain}" |
       awk '{print $3}' > $zonefile
   while read -r dns_zone; do
     if [ "$(ipa dnsrecord-find $dns_zone | grep $clientip)" ]; then
-      domainrecords=$(ipa dnsrecord-find $dns_zone $clientname |
+      domainrecords=$(ipa dnsrecord-find ${dns_zone} ${clientname} |
                           grep "${clientname}" |
                           awk '{print $3}')
       if [ "${domainrecords}" == "${clientname}" ]; then
-        ipa host-del $clientname.$dns_zone \
-            --update-dns --continue \
+        ipa host-del $fqdn \
+            --updatedns \
+            --continue \
             >> /dev/null 2>&1
       fi
     fi
@@ -72,20 +76,10 @@ check_node() {
 
 add_node() {
 
-    if [ -z $cluster ];
-    then
-        ipa host-add $clientname.$domain --ip-address=$clientip
-        ipa host-mod $clientname.$domain --password="${onetimepass}"
-        ipa hostgroup-add-member ${domain} --hosts $clientname.$domain
-        ipa hostgroup-add-member usernodes --hosts $clientname.$domain
-    elif [ ! -z $cluster ];
-    then
-        ipa host-add $clientname.$cluster.$domain --ip-address=$clientip
-        ipa host-mod $clientname.$cluster.$domain --password="${onetimepass}"
-        ipa hostgroup-add-member ${cluster} --hosts $clientname.$cluster.$domain
-        ipa hostgroup-add-member usernodes --hosts $clientname.$cluster.$domain
-    fi
-    echo "OK"
+  ipa host-add ${fqdn} --ip-address=${clientip}
+  ipa host-mod ${fqdn} --password="${onetimepass}"
+  ipa hostgroup-add-member ${cluster_domain} --hosts=${fqdn}
+  ipa hostgroup-add-member usernodes --hosts=${fqdn}
 
 }
 
@@ -99,6 +93,5 @@ else
 
   kinit -kt $keytab $keyuser
   check_cluster
-  check_node
 
 fi
