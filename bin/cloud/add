@@ -16,7 +16,6 @@ check_cluster() {
   if [ -z $cluster ]; then
     fqdn="${clientname}.${domain}"
     cluster_domain="${domain}"
-    check_node
   elif [ ! -z $cluster ]; then
     fqdn="${clientname}.${cluster}.${domain}"
     cluster_domain="${cluster}.${domain}"
@@ -27,9 +26,9 @@ check_cluster() {
       ipa dnsrecord-add ${domain} ${cluster} \
           --ns-rec=${directoryappliance}. \
           >> /dev/null 2>&1
-      check_node
     fi
   fi
+  check_node
 
 }
 
