@@ -439,6 +439,10 @@ push_config() {
 
     _s3cmd=/opt/clusterware/opt/s3cmd/s3cmd
     source /opt/clusterware/etc/cluster-customizer.rc
+    if [ -z $cw_CLUSTER_CUSTOMIZER_bucket ]; then
+      source /opt/clusterware/etc/config/cluster/instance-aws.rc
+      cw_CLUSTER_CUSTOMIZER_bucket="s3://alces-flight-${cw_INSTANCE_aws_account_hash}"
+    fi
     echo "DIRECTORY=`hostname -i`" >> $DIRECTORYDIR/etc/node_config
     echo "cw_FLIGHT_TRIGGER_auth=alces:$TRIGGERPASSWORD" >> $DIRECTORYDIR/etc/node_config
     chmod 0640 $DIRECTORYDIR/etc/node_config
