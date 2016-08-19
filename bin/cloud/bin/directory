@@ -91,55 +91,17 @@ say_done() {
 configure() {
 
     config=/opt/symphony-directory/etc/config
-    autoconfig=/opt/symphony-directory/etc/autoconfig
-    if [ -f $config ];
-    then
-        echo "Configuration file present - please remove before continuing"
-        exit 1
-    elif [ ! -f $config ];
-    then
-        IPA=$(openssl rand -hex 8)
-        TRIGGER=$(openssl rand -hex 8)
-        mkdir -p /opt/symphony-directory/etc
-        touch $config
-        chmod 0640 $config
-        if [ ! -f $autoconfig ];
-        then
-            for service in IPA TRIGGER; do
-                genpwd=$(openssl rand -hex 8)
-                printf "\n"
-                printf "${BOLD}${service} administrator password${NC}\n"
-                printf "Please enter your desired ${service} password - or press Enter to use the default generated password\n"
-                prompt=$(printf "${BOLD}[${NC}$genpwd${BOLD}]${NC}: ")
-                while IFS= read -p "$prompt" -r -s -n 1 input
-                do
-                    if [[ $input == $'\0' ]];
-                    then
-                        break
-                    elif [[ $input == $'\177' ]];
-                    then
-                        prompt=$'\b \b'
-                        pwd="${pwd%?}"
-                    else
-                        prompt='*'
-                        pwd+="$input"
-                    fi
-                done
-                if [ -z $pwd ];
-                then
-                    echo "${service}PASSWORD=${genpwd}" >> $config
-                elif [ ! -z $pwd ];
-                then
-                    echo "${service}PASSWORD=${pwd}" >> $config
-                fi
-                printf "\n\n"
-                unset pwd
-            done
-        elif [ -f $autoconfig ];
-        then
-            echo "IPAPASSWORD=$IPA" >> $config
-            echo "TRIGGERPASSWORD=$TRIGGER" >> $config
-        fi
+    mkdir -p /opt/symphony-directory/etc
+    if [ ! -f $config ]; then
+      touch $config && chmod 0640 $config
+      echo "Generating configuration file"
+      for service in IPA TRIGGER; do
+        PASSWORD=$(openssl rand -hex 10)
+        echo "${SERVICE}PASSWORD=${PASSWORD}" >> $config
+      done
+    elif [ -f $config ]; then
+      echo "Configuration file exists"
+      exit 1
     fi
 
 }
