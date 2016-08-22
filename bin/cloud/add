@@ -50,26 +50,28 @@ cluster_hostgroup() {
 
 check_node() {
 
-  zonefile="/opt/symphony-directory/etc/zones"
-  ipa dnszone-find |
-      grep "Zone\ name:" |
-      awk '{print $3}' > $zonefile
-  while read -r dns_zone; do
-    if [ "$(ipa dnsrecord-find $dns_zone | grep $clientname)" ]; then
-      domainrecords=$(ipa dnsrecord-find ${dns_zone} ${clientname} |
-                          grep "${clientname}" |
-                          awk '{print $3}')
-      if [ "${domainrecords}" == "${clientname}" ]; then
-        ipa host-del $fqdn \
+    zonefile="/opt/symphony-directory/etc/zones"
+    ipa dnszone-find |
+        grep "Zone\ name:" |
+        awk '{print $3}' > $zonefile
+    while read -r dns_zone; do
+        if [ "$(ipa dnsrecord-find $dns_zone | grep $clientip)" ]; then
+            domainrecords=$(ipa dnsrecord-find ${dns_zone} ${clientname} |
+                                grep "${clientname}" |
+                                awk '{print $3}')
+            ipa host-del ${domainrecords}.${dns_zone} \
+                --updatedns \
+                --continue
+        fi
+    done < "$zonefile"
+    if [ "$(ipa host-find | grep "${fqdn}")" ]; then
+        ipa host-del ${fqdn} \
             --updatedns \
-            --continue \
-            >> /dev/null 2>&1
-      fi
+            --continue
     fi
-  done < "$zonefile"
-  echo "OK"
-  cluster_hostgroup >> /dev/null 2>&1
-  add_node >> /dev/null 2>&1
+    echo "OK"
+    cluster_hostgroup >> /dev/null 2>&1
+    add_node >> /dev/null 2>&1
 
 }
 
@@ -94,3 +96,4 @@ else
   check_cluster
 
 fi
+
