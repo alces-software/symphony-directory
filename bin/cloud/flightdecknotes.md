@@ -129,8 +129,8 @@ Once your cluster has finished creating - you can log in to your environment usi
 
     - The `storage` template is mostly the same, fill in as per the infrastructure template - leaving the following fields blank for each platform:
 
-      - OpenStack: `domain`, `prv_network`
-      - AWS: `ClusterDomain`, `PrivateVPC`, `PrvSubnet`
+      - OpenStack: `domain`, `prv_network`, `api_network`
+      - AWS: `ClusterDomain`, `EnvironmentVPC`, `PrvSubnet`, `APISubnet`
       - Enter `node` in the CustomizerProfiles parameter
       - AWS only: Enter the `StorageSize` parameter
 
