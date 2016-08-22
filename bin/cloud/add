@@ -55,7 +55,7 @@ check_node() {
       grep "Zone\ name:" |
       awk '{print $3}' > $zonefile
   while read -r dns_zone; do
-    if [ "$(ipa dnsrecord-find $dns_zone | grep $clientip)" ]; then
+    if [ "$(ipa dnsrecord-find $dns_zone | grep $clientname)" ]; then
       domainrecords=$(ipa dnsrecord-find ${dns_zone} ${clientname} |
                           grep "${clientname}" |
                           awk '{print $3}')
