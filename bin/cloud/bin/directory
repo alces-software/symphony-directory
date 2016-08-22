@@ -95,7 +95,7 @@ configure() {
     if [ ! -f $config ]; then
       touch $config && chmod 0640 $config
       echo "Generating configuration file"
-      for service in IPA TRIGGER; do
+      for SERVICE in IPA TRIGGER; do
         PASSWORD=$(openssl rand -hex 10)
         echo "${SERVICE}PASSWORD=${PASSWORD}" >> $config
       done
