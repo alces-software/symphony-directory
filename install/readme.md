@@ -15,6 +15,6 @@
 
 ## Stage 1,2,3 install scripts
 - run staged installer scripts, reboot between each one eg:
-``` curl https://raw.githubusercontent.com/alces-software/symphony-director/master/install/bin/stage1.sh | /bin/bash -x```
+``` curl https://raw.githubusercontent.com/alces-software/symphony-`hostname -s`/master/install/bin/install.sh | /bin/bash -x```
 
 
