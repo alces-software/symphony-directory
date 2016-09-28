@@ -30,7 +30,7 @@ if [ $IPA -gt 0 ]; then
 
   REALM=`echo $DOMAIN | sed -e 's/\(.*\)/\U\1/'`
 
-  kinit admin
+  echo $ROOTPASSWORD | kinit admin
   ipa dnszone-add $PRVDOMAIN --name-server directory.$DOMAIN.
   ipa dnszone-add $BLDDOMAIN --name-server directory.$DOMAIN.
   ipa dnsforwardzone-add $MGTDOMAIN. --forwarder 10.78.254.1 --forward-policy=only
