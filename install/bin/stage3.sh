@@ -33,8 +33,7 @@ EOF
   echo "==========================================================================="
   echo "Please login to director and sign the certificate for this machine"
   echo "# puppet cert sign `hostname -s`"
-  echo ""
-  read -rsp $'Press any key once complete\n' -n1 key
+  sleep 60
   
   #Generate puppet signing request
   /usr/bin/puppet agent --test --waitforcert 10 --server director --environment symphony
